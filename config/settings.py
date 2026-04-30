@@ -31,7 +31,7 @@ DATA_DIR.mkdir(exist_ok=True)
 # ═══════════════════════════════════════════════════════════════
 # LLM CONFIGURATION
 # ═══════════════════════════════════════════════════════════════
-LLM_PROVIDER: Literal["OLLAMA", "OPENAI", "ANTHROPIC"] = os.getenv(
+LLM_PROVIDER: Literal["OLLAMA", "OPENAI", "ANTHROPIC", "GEMINI"] = os.getenv(
     "LLM_PROVIDER", "OLLAMA"
 ).upper()  # type: ignore
 
@@ -43,6 +43,9 @@ OPENAI_MODEL = "gpt-4-turbo"
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 ANTHROPIC_MODEL = "claude-opus"
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", os.getenv("GOOGLE_API_KEY", ""))
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-pro")
 
 # Token guard: max words to process before summarization
 JD_MAX_WORDS = 1000

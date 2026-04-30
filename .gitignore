@@ -4,3 +4,5 @@ extra/cache
 extra/sample_output
 .env
 .env.example
+
+output/

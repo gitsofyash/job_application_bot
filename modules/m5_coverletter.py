@@ -58,6 +58,8 @@ from config.settings import (
     OPENAI_MODEL,
     ANTHROPIC_API_KEY,
     ANTHROPIC_MODEL,
+    GEMINI_API_KEY,
+    GEMINI_MODEL,
     JD_MAX_WORDS,
     COVER_LETTER_MAX_CHARS,
     COVER_LETTER_LLM_TIMEOUT_SECONDS,
@@ -383,6 +385,21 @@ def get_llm_chain():
                 api_key=ANTHROPIC_API_KEY,
                 model=ANTHROPIC_MODEL,
                 temperature=0.4,
+            )
+        
+        elif LLM_PROVIDER == "GEMINI":
+            from langchain_google_genai import ChatGoogleGenerativeAI
+
+            if not GEMINI_API_KEY:
+                raise ValueError("GEMINI_API_KEY or GOOGLE_API_KEY not set in .env")
+
+            console.log(f"[cyan]Initializing Gemini: {GEMINI_MODEL}[/cyan]")
+            return ChatGoogleGenerativeAI(
+                google_api_key=GEMINI_API_KEY,
+                model=GEMINI_MODEL,
+                temperature=0.25,
+                timeout=COVER_LETTER_LLM_TIMEOUT_SECONDS,
+                max_retries=1,
             )
         
         else:
