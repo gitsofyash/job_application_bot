@@ -51,6 +51,7 @@ from config.settings import (
     ANTHROPIC_API_KEY,
     ANTHROPIC_MODEL,
     JD_MAX_WORDS,
+    RESUME_TAILOR_LLM_TIMEOUT_SECONDS,
     VERIFIED_SKILLS,
     BASE_RESUME_PATH,
     DEBUG,
@@ -259,6 +260,43 @@ Extracted Technical Requirements:"""
     console.log(f"[green]Summarized to: {new_word_count} words[/green]")
     
     return summarized_text
+
+
+def compact_jd_for_tailoring(jd_text: str, max_words: int = JD_MAX_WORDS) -> str:
+    """
+    Compact scraped JD text without using an LLM, keeping job-relevant sections first.
+    """
+    if count_words(jd_text) <= max_words:
+        return jd_text
+
+    lines = [line.strip() for line in jd_text.splitlines() if line.strip()]
+    priority_terms = [
+        "description",
+        "responsibilities",
+        "requirements",
+        "basic qualifications",
+        "preferred qualifications",
+        "qualifications",
+        "experience",
+        "software",
+        "engineer",
+        "skills",
+        "you will",
+        "we are looking",
+    ]
+    noise_terms = ["sign in", "profile", "search", "back to search", "store", "support"]
+    selected = []
+
+    for line in lines:
+        lower = line.lower()
+        if any(term in lower for term in priority_terms):
+            selected.append(line)
+        elif len(line.split()) > 8 and not any(term == lower for term in noise_terms):
+            selected.append(line)
+
+    compact = "\n".join(selected) if selected else jd_text
+    words = compact.split()
+    return " ".join(words[:max_words])
 
 
 def extract_keywords(text: str) -> List[str]:
@@ -551,9 +589,9 @@ async def tailor_resume(
     console.log(f"[green]Matched {len(matched_skills)} verified skills[/green]")
     console.log(f"[yellow]{len(missing_keywords)} keywords not in Yash's skills[/yellow]")
     
-    # Summarize JD if needed
+    # Compact JD without a slow extra LLM summarization call.
     llm = get_llm_chain()
-    jd_for_processing = summarize_jd(job_description, llm)
+    jd_for_processing = compact_jd_for_tailoring(job_description)
     
     # Build experience items
     base_experience = base_resume.get("experience", [])
@@ -620,13 +658,16 @@ Output JSON:""",
     console.log("[blue]Invoking LLM for tailoring...[/blue]")
     chain = prompt | llm
     
-    response = await asyncio.to_thread(
-        chain.invoke,
-        {
-            "jd_text": jd_for_processing,
-            "base_summary": base_summary,
-            "experience_bullets": experience_bullets,
-        },
+    response = await asyncio.wait_for(
+        asyncio.to_thread(
+            chain.invoke,
+            {
+                "jd_text": jd_for_processing,
+                "base_summary": base_summary,
+                "experience_bullets": experience_bullets,
+            },
+        ),
+        timeout=RESUME_TAILOR_LLM_TIMEOUT_SECONDS,
     )
     
     # Extract content if response is a message object

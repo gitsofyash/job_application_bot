@@ -47,6 +47,11 @@ ANTHROPIC_MODEL = "claude-opus"
 # Token guard: max words to process before summarization
 JD_MAX_WORDS = 1000
 
+# Resume tailoring defaults to the deterministic ATS-optimized path. Turn this
+# on only when you specifically want slower LLM bullet rewriting.
+RESUME_TAILOR_USE_LLM = os.getenv("RESUME_TAILOR_USE_LLM", "false").lower() == "true"
+RESUME_TAILOR_LLM_TIMEOUT_SECONDS = int(os.getenv("RESUME_TAILOR_LLM_TIMEOUT_SECONDS", "45"))
+
 # Cover letters default to a fast deterministic generator. Set true only when
 # you specifically want the slower LLM-written version.
 COVER_LETTER_USE_LLM = os.getenv("COVER_LETTER_USE_LLM", "false").lower() == "true"

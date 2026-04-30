@@ -44,6 +44,7 @@ from config.settings import (
     DRY_RUN,
     DEBUG,
     BASE_RESUME_PATH,
+    RESUME_TAILOR_USE_LLM,
     COVER_LETTER_USE_LLM,
 )
 
@@ -207,7 +208,10 @@ async def orchestrate_application(
         # OPTIMIZATION: Skip LLM tailoring for very small JDs (< 200 words)
         jd_word_count = len(extraction.raw_text.split()) if extraction.raw_text else 0
         if jd_word_count < 200:
-            console.print(f"[yellow]⚠️ JD too small ({jd_word_count} words), skipping LLM tailoring[/yellow]\n")
+            console.print(f"[yellow]⚠️ JD too small ({jd_word_count} words), using fast ATS tailoring[/yellow]\n")
+            result.tailoring = build_rule_based_tailored_resume(extraction.raw_text)
+        elif not RESUME_TAILOR_USE_LLM:
+            console.print("[cyan]Fast ATS resume tailoring enabled (RESUME_TAILOR_USE_LLM=false)[/cyan]\n")
             result.tailoring = build_rule_based_tailored_resume(extraction.raw_text)
         else:
             try:
