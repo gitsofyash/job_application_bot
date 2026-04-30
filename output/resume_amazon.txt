@@ -3,10 +3,10 @@ Email: 2004yggupta@gmail.com | Phone: +91 9351951828
 linkedin/yash-gupta | github/gitsofyash
 
 PROFESSIONAL SUMMARY
-Software Engineer with hands-on experience in Python, Golang, SQL, C++, Embedded C, JavaScript, building backend, cloud, and embedded systems. Focused on scalable APIs, reliable data pipelines, testing, and measurable production outcomes aligned to the role. Additional strengths include security-focused API design a...
+Software Engineer with hands-on experience in JWT Authentication, System Design, building backend, cloud, and embedded systems. Focused on scalable APIs, reliable data pipelines, testing, and measurable production outcomes aligned to the role.
 
 TECHNICAL SKILLS
-Python, Golang, SQL, PostgreSQL, MySQL, SQLAlchemy, SQLAlchemy ORM, C++, Embedded C, JavaScript, Bash, Flask, REST APIs, Microservices, JWT Authentication, AWS IAM, System Design, Data Structures, Algorithms, API Design
+JWT Authentication, System Design, Python, Golang, C++, SQL, Embedded C, JavaScript, Bash, REST APIs, Microservices, Data Structures, Algorithms, API Design, AWS EC2, AWS S3, AWS Lambda, AWS RDS, AWS DynamoDB, AWS API Gateway
 
 PROFESSIONAL EXPERIENCE
 Software Engineer Intern | Nippon Audiotronix Pvt. Ltd. | Sept 2021 - Present

@@ -47,6 +47,14 @@ ANTHROPIC_MODEL = "claude-opus"
 # Token guard: max words to process before summarization
 JD_MAX_WORDS = 1000
 
+# Cover letters default to a fast deterministic generator. Set true only when
+# you specifically want the slower LLM-written version.
+COVER_LETTER_USE_LLM = os.getenv("COVER_LETTER_USE_LLM", "false").lower() == "true"
+COVER_LETTER_MAX_CHARS = int(os.getenv("COVER_LETTER_MAX_CHARS", "2400"))
+COVER_LETTER_LLM_TIMEOUT_SECONDS = int(os.getenv("COVER_LETTER_LLM_TIMEOUT_SECONDS", "35"))
+COVER_LETTER_LLM_MAX_WORDS = int(os.getenv("COVER_LETTER_LLM_MAX_WORDS", "650"))
+COVER_LETTER_LLM_MAX_TOKENS = int(os.getenv("COVER_LETTER_LLM_MAX_TOKENS", "650"))
+
 # ═══════════════════════════════════════════════════════════════
 # BROWSER CONFIGURATION
 # ═══════════════════════════════════════════════════════════════

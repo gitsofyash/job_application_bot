@@ -1,0 +1,12 @@
+Dear Hiring Manager,
+
+I am excited to apply for this Software Engineer opportunity. My background in JWT Authentication, System Design aligns well with the technical requirements and delivery focus described in the role.
+
+In my current role as Software Engineer Intern at Nippon Audiotronix Pvt. Ltd., I have built backend and real-time systems with a focus on reliability, measurable performance, testing, and clean engineering execution.
+
+My project work, including Distributed File Deduplication & Metadata Service on AWS, demonstrates practical experience with scalable APIs, cloud services, data storage, monitoring, and production-minded problem solving.
+
+I would welcome the opportunity to discuss how my engineering experience can contribute to your team. Thank you for your time and consideration.
+
+Sincerely,
+Yash Gupta

@@ -150,10 +150,11 @@ def get_llm_chain():
     """
     try:
         if LLM_PROVIDER == "OLLAMA":
-            from langchain_community.llms import Ollama
-            
+            # from langchain_community.llms import Ollama
+            from langchain_ollama import OllamaLLM      # New way
+
             console.log(f"[cyan]Initializing Ollama: {OLLAMA_MODEL}[/cyan]")
-            return Ollama(
+            return OllamaLLM(
                 base_url=OLLAMA_BASE_URL,
                 model=OLLAMA_MODEL,
                 temperature=0.3,  # Low temp for consistency

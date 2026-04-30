@@ -44,6 +44,7 @@ from config.settings import (
     DRY_RUN,
     DEBUG,
     BASE_RESUME_PATH,
+    COVER_LETTER_USE_LLM,
 )
 
 from modules.m1_extractor import (
@@ -380,6 +381,8 @@ async def orchestrate_application(
         
         try:
             try:
+                if not COVER_LETTER_USE_LLM:
+                    raise RuntimeError("fast cover-letter mode is enabled")
                 if not is_local_ollama_available():
                     raise RuntimeError("Ollama is not running at localhost:11434")
                 cover_letter = await generate_cover_letter(

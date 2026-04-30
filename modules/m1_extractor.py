@@ -329,30 +329,80 @@ async def extract_text_content(page: Page, platform: Platform) -> str:
     if not job_body_selector:
         raise PlatformDetectionError(f"No selector for platform: {platform}")
     
-    # Try to find job body element
-    element = await page.query_selector(job_body_selector)
-    
-    if not element:
-        console.log(f"[yellow]Primary selector not found, trying fallback[/yellow]")
-        # Try generic selectors
-        for selector in ["article", "main", ".content", "body"]:
-            element = await page.query_selector(selector)
-            if element:
-                break
-    
-    if not element:
-        raise PlatformDetectionError("Could not locate job description element")
-    
-    # Extract visible text from element (ignores scripts and styles)
-    text_content = await element.inner_text()
+    candidate_selectors = [
+        job_body_selector,
+        "[data-testid*='job']",
+        "[class*='job-detail']",
+        "[class*='job-description']",
+        "[class*='description']",
+        "[class*='posting']",
+        "article",
+        "main",
+        ".content",
+        "[role='main']",
+        "body",
+    ]
+
+    best_text = ""
+    best_score = -1
+    seen_selectors = set()
+
+    for selector in candidate_selectors:
+        if not selector or selector in seen_selectors:
+            continue
+        seen_selectors.add(selector)
+        try:
+            elements = await page.query_selector_all(selector)
+        except Exception:
+            continue
+
+        for element in elements[:12]:
+            try:
+                candidate = await element.inner_text()
+            except Exception:
+                continue
+
+            candidate = "\n".join(
+                line.strip() for line in candidate.split("\n") if line.strip()
+            )
+            word_count = len(candidate.split())
+            if word_count < 20:
+                continue
+
+            lower = candidate.lower()
+            job_signal_count = sum(
+                1
+                for term in [
+                    "description",
+                    "responsibilities",
+                    "qualifications",
+                    "requirements",
+                    "basic qualifications",
+                    "preferred qualifications",
+                    "software",
+                    "engineer",
+                    "experience",
+                ]
+                if term in lower
+            )
+            nav_penalty = sum(
+                1
+                for term in ["sign out", "my profile", "account security", "settings"]
+                if term in lower
+            )
+            score = word_count + (job_signal_count * 150) - (nav_penalty * 250)
+
+            if score > best_score:
+                best_score = score
+                best_text = candidate
+
+    text_content = best_text
     
     if not text_content or text_content.strip() == "":
         raise PlatformDetectionError("Extracted text is empty")
-    
-    # Clean whitespace
-    text_content = "\n".join(
-        line.strip() for line in text_content.split("\n") if line.strip()
-    )
+
+    if len(text_content.split()) < 80:
+        console.log("[yellow]Extracted text is very short; site may need custom selectors or login/session access[/yellow]")
     
     return text_content
 

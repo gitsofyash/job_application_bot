@@ -38,6 +38,7 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 from pathlib import Path
 
+import httpx
 from pydantic import BaseModel, Field, field_validator
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
@@ -58,6 +59,10 @@ from config.settings import (
     ANTHROPIC_API_KEY,
     ANTHROPIC_MODEL,
     JD_MAX_WORDS,
+    COVER_LETTER_MAX_CHARS,
+    COVER_LETTER_LLM_TIMEOUT_SECONDS,
+    COVER_LETTER_LLM_MAX_WORDS,
+    COVER_LETTER_LLM_MAX_TOKENS,
     USER_PROFILE_PATH,
     OUTPUT_DIR,
     DEBUG,
@@ -78,6 +83,148 @@ def is_local_ollama_available(timeout_seconds: float = 0.5) -> bool:
             return True
     except Exception:
         return False
+
+
+def trim_to_complete_sentence(text: str, max_chars: int) -> str:
+    """
+    Trim text without leaving an incomplete sentence fragment.
+    """
+    text = fix_encoding_issues(text).strip()
+    if len(text) <= max_chars:
+        return text
+
+    clipped = text[:max_chars].rstrip()
+    sentence_end = max(clipped.rfind("."), clipped.rfind("!"), clipped.rfind("?"))
+    if sentence_end >= max_chars * 0.55:
+        return clipped[: sentence_end + 1].strip()
+
+    last_space = clipped.rfind(" ")
+    if last_space > 0:
+        clipped = clipped[:last_space].rstrip()
+    return f"{clipped}."
+
+
+def normalize_cover_letter(cover_letter: CoverLetter, max_chars: int = COVER_LETTER_MAX_CHARS) -> CoverLetter:
+    """
+    Keep the cover letter complete and professional under the configured length.
+    """
+    section_limits = {
+        "greeting": 80,
+        "opening_paragraph": 430,
+        "body_paragraph_1": 520,
+        "body_paragraph_2": 520,
+        "closing_paragraph": 320,
+        "signature": 80,
+    }
+    data = cover_letter.model_dump()
+    for field, limit in section_limits.items():
+        data[field] = trim_to_complete_sentence(str(data[field]), limit)
+
+    normalized = CoverLetter(**data)
+    while len(format_cover_letter_text(normalized)) > max_chars:
+        if len(normalized.body_paragraph_2) > 220:
+            normalized.body_paragraph_2 = trim_to_complete_sentence(normalized.body_paragraph_2, len(normalized.body_paragraph_2) - 80)
+        elif len(normalized.body_paragraph_1) > 220:
+            normalized.body_paragraph_1 = trim_to_complete_sentence(normalized.body_paragraph_1, len(normalized.body_paragraph_1) - 80)
+        elif len(normalized.opening_paragraph) > 180:
+            normalized.opening_paragraph = trim_to_complete_sentence(normalized.opening_paragraph, len(normalized.opening_paragraph) - 60)
+        else:
+            break
+
+    return normalized
+
+
+def compact_text_by_sections(text: str, max_words: int) -> str:
+    """
+    Keep the most useful JD lines for the LLM prompt without another LLM call.
+    """
+    fixed_text = fix_encoding_issues(text)
+    lines = [line.strip() for line in fixed_text.splitlines()]
+    if len(lines) <= 2:
+        lines = [
+            chunk.strip()
+            for chunk in re.split(r"(?<=[.!?])\s+|(?=\b(?:DESCRIPTION|RESPONSIBILITIES|BASIC QUALIFICATIONS|PREFERRED QUALIFICATIONS|REQUIREMENTS)\b)", fixed_text)
+            if chunk.strip()
+        ]
+    useful_lines = []
+    priority_terms = [
+        "description",
+        "responsibilities",
+        "requirements",
+        "basic qualifications",
+        "preferred qualifications",
+        "qualifications",
+        "experience",
+        "software",
+        "engineer",
+        "skills",
+        "you will",
+        "we are looking",
+    ]
+
+    for line in lines:
+        if not line:
+            continue
+        lower = line.lower()
+        nav_hits = sum(
+            1
+            for term in [
+                "sign out",
+                "my profile",
+                "account security",
+                "settings",
+                "my applications",
+                "job categories",
+            ]
+            if term in lower
+        )
+        if nav_hits and not any(term in lower for term in ["qualification", "responsibilit", "description", "software", "engineer"]):
+            continue
+        if any(term in lower for term in priority_terms) or len(line.split()) > 8:
+            useful_lines.append(line)
+
+    compact = "\n".join(useful_lines) if useful_lines else fix_encoding_issues(text)
+    words = compact.split()
+    if len(words) <= max_words:
+        return compact
+
+    clipped = " ".join(words[:max_words])
+    return trim_to_complete_sentence(clipped, len(clipped))
+
+
+def compact_resume_context(resume_data: Dict[str, Any]) -> str:
+    """
+    Small resume context for faster cover-letter LLM calls.
+    """
+    parts = []
+    if resume_data.get("summary"):
+        parts.append(f"Summary: {trim_to_complete_sentence(resume_data['summary'], 360)}")
+
+    for exp in resume_data.get("experience", [])[:1]:
+        bullets = "; ".join(exp.get("bullets", [])[:3])
+        parts.append(
+            f"Experience: {exp.get('title', '')} at {exp.get('company', '')}; "
+            f"{trim_to_complete_sentence(bullets, 520)}"
+        )
+
+    for project in resume_data.get("projects", [])[:2]:
+        technologies = ", ".join(project.get("technologies", [])[:8])
+        parts.append(
+            f"Project: {project.get('title', '')}; {project.get('description', '')}; Tech: {technologies}"
+        )
+
+    skills_data = resume_data.get("skills", {})
+    skills = []
+    if isinstance(skills_data, dict):
+        for values in skills_data.values():
+            if isinstance(values, list):
+                skills.extend(values[:4])
+    elif isinstance(skills_data, list):
+        skills.extend(skills_data)
+    if skills:
+        parts.append(f"Skills: {', '.join(skills[:18])}")
+
+    return "\n".join(parts)
 
 # ═══════════════════════════════════════════════════════════════
 # MODELS
@@ -159,7 +306,7 @@ def build_rule_based_cover_letter(
     skills_text = ", ".join(selected_skills)
     name = user_profile.get("name", "Yash Gupta")
 
-    return CoverLetter(
+    cover_letter = CoverLetter(
         greeting="Dear Hiring Manager,",
         opening_paragraph=(
             "I am excited to apply for this Software Engineer opportunity. "
@@ -180,6 +327,7 @@ def build_rule_based_cover_letter(
         signature=f"Sincerely,\n{name}",
         keywords_used=selected_skills,
     )
+    return normalize_cover_letter(cover_letter)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -335,11 +483,6 @@ def format_resume_context(resume_data: Dict[str, Any]) -> str:
     return context
 
 
-@retry(
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=4, max=10),
-    retry=retry_if_exception_type((ValueError, Exception)),
-)
 async def generate_cover_letter(job_description: str, resume_data: Optional[Dict[str, Any]] = None) -> CoverLetter:
     """
     Generate ATS-friendly cover letter tailored to job description.
@@ -369,24 +512,17 @@ async def generate_cover_letter(job_description: str, resume_data: Optional[Dict
     if resume_data is None:
         resume_data = load_resume_data()
     
-    # Format resume context for prompt
-    resume_context = format_resume_context(resume_data) if resume_data else ""
-    
-    # Truncate JD if too long
-    if len(job_description.split()) > JD_MAX_WORDS:
-        console.log(
-            f"[yellow]JD exceeds {JD_MAX_WORDS} words, summarizing...[/yellow]"
-        )
-        job_description = await summarize_jd(job_description)
-    
-    # Initialize LLM
-    llm = get_llm_chain()
-    
-    # Create prompt
+    resume_context = compact_resume_context(resume_data) if resume_data else ""
+    job_description = compact_text_by_sections(
+        job_description,
+        max_words=COVER_LETTER_LLM_MAX_WORDS,
+    )
+
     parser = PydanticOutputParser(pydantic_object=CoverLetter)
-    
+
     prompt_template = PromptTemplate(
-        template="""You are an expert cover letter writer. Generate a professional, ATS-friendly cover letter that directly references the candidate's actual resume content and experience.
+        template="""Write a concise, professional, ATS-friendly cover letter tailored to the job description.
+Return ONLY valid JSON matching the schema. Keep every paragraph complete; never end mid-sentence.
 
 USER PROFILE:
 - Name: {name}
@@ -402,10 +538,10 @@ JOB DESCRIPTION:
 {job_description}
 
 REQUIREMENTS:
-1. Opening paragraph (3-4 sentences): Express enthusiasm for the role and company, mention specific role title if known
-2. First body paragraph (3-4 sentences): Reference ACTUAL experience from the resume that matches job requirements
-3. Second body paragraph (3-4 sentences): Highlight specific skills and achievements from resume that solve job's key challenges
-4. Closing paragraph (2-3 sentences): Include call to action and availability
+1. Opening paragraph: 2 complete sentences, mention the role if clear.
+2. First body paragraph: 2-3 complete sentences using only actual resume experience.
+3. Second body paragraph: 2-3 complete sentences matching resume skills/projects to JD requirements.
+4. Closing paragraph: 1-2 complete sentences.
 5. Professional greeting and closing
 
 ATS OPTIMIZATION RULES:
@@ -415,11 +551,12 @@ ATS OPTIMIZATION RULES:
 - Use action verbs and QUANTIFIABLE achievements from resume
 - Maintain professional tone throughout
 - Reference specific technologies and methodologies from resume
-- Match timing and context: if cover letter mentions experience, use exact timeframe from resume
+- Do not invent companies, skills, tools, degrees, or years of experience
+- Total output should be under {max_chars} characters
 
 {format_instructions}
 
-Generate the cover letter now:""",
+JSON only:""",
         input_variables=[
             "name",
             "email", 
@@ -428,38 +565,82 @@ Generate the cover letter now:""",
             "github",
             "resume_context",
             "job_description",
+            "max_chars",
             "format_instructions",
         ],
         partial_variables={
             "format_instructions": parser.get_format_instructions()
         },
     )
-    
-    # Generate cover letter
-    console.log("[cyan]Generating cover letter with LLM and resume context...[/cyan]")
-    
+
+    prompt = prompt_template.format(
+        name=user_profile.get("name", "Yash Gupta"),
+        email=user_profile.get("email", "2004yggupta@gmail.com"),
+        phone=user_profile.get("phone", "+91 9351951828"),
+        linkedin=user_profile.get("linkedin", "linkedin/yash-gupta"),
+        github=user_profile.get("github", "github/gitsofyash"),
+        resume_context=resume_context,
+        job_description=job_description,
+        max_chars=COVER_LETTER_MAX_CHARS,
+    )
+
+    console.log(
+        f"[cyan]Generating LLM cover letter with compact prompt "
+        f"({len(job_description.split())} JD words, timeout {COVER_LETTER_LLM_TIMEOUT_SECONDS}s)...[/cyan]"
+    )
+
     try:
-        chain = prompt_template | llm | parser
-        
-        cover_letter = await asyncio.to_thread(
-            chain.invoke,
-            {
-                "name": user_profile.get("name", "Yash Gupta"),
-                "email": user_profile.get("email", "2004yggupta@gmail.com"),
-                "phone": user_profile.get("phone", "+91 9351951828"),
-                "linkedin": user_profile.get("linkedin", "linkedin/yash-gupta"),
-                "github": user_profile.get("github", "github/gitsofyash"),
-                "resume_context": resume_context,
-                "job_description": job_description,
-            },
-        )
-        
+        if LLM_PROVIDER == "OLLAMA":
+            cover_letter = await generate_cover_letter_with_ollama(prompt)
+        else:
+            llm = get_llm_chain()
+            chain = llm | parser
+            cover_letter = await asyncio.wait_for(
+                asyncio.to_thread(chain.invoke, prompt),
+                timeout=COVER_LETTER_LLM_TIMEOUT_SECONDS,
+            )
+
         console.log("[green]✓ Cover letter generated successfully[/green]")
-        return cover_letter
-    
+        return normalize_cover_letter(cover_letter)
+    except asyncio.TimeoutError as e:
+        raise TimeoutError(
+            f"Cover letter LLM exceeded {COVER_LETTER_LLM_TIMEOUT_SECONDS}s"
+        ) from e
     except Exception as e:
         console.log(f"[red]Error generating cover letter: {e}[/red]")
         raise ValueError(f"Cover letter generation failed: {e}") from e
+
+
+async def generate_cover_letter_with_ollama(prompt: str) -> CoverLetter:
+    """
+    Faster Ollama path using the native HTTP API with JSON mode and token limits.
+    """
+    payload = {
+        "model": OLLAMA_MODEL,
+        "prompt": prompt,
+        "stream": False,
+        "format": "json",
+        "options": {
+            "temperature": 0.25,
+            "num_predict": COVER_LETTER_LLM_MAX_TOKENS,
+        },
+    }
+    timeout = httpx.Timeout(COVER_LETTER_LLM_TIMEOUT_SECONDS)
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        response = await client.post(
+            f"{OLLAMA_BASE_URL.rstrip('/')}/api/generate",
+            json=payload,
+        )
+        response.raise_for_status()
+        data = response.json()
+
+    response_text = data.get("response", "")
+    try:
+        parsed = json.loads(response_text)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Ollama returned invalid JSON: {e}") from e
+
+    return CoverLetter(**parsed)
 
 
 async def summarize_jd(job_description: str) -> str:
