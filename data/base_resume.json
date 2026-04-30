@@ -1,0 +1,111 @@
+{
+  "personal_info": {
+    "name": "Yash Gupta",
+    "email": "2004yggupta@gmail.com",
+    "phone": "+91 9351951828",
+    "location": "Jabalpur, MP / Gurugram, Haryana, India",
+    "linkedin": "linkedin/yash-gupta",
+    "github": "github/gitsofyash"
+  },
+  "summary": "Software Engineer with strong expertise in backend development, AWS cloud architecture, and embedded systems. Experienced in building scalable APIs, real-time data processing pipelines, and ASPICE-compliant embedded solutions. Demonstrated proficiency in cloud cost optimization, distributed systems, and sensor fusion algorithms. Proven track record in hackathon competitions with innovative problem-solving approach and ability to deliver production-grade solutions under tight deadlines.",
+  "education": [
+    {
+      "degree": "B.Tech in Computer Science & Business Systems",
+      "institution": "Gyan Ganga Institute of Technology & Sciences",
+      "location": "Jabalpur",
+      "cgpa": "8.53/10.0",
+      "duration": "July 2021 – May 2025",
+      "coursework": ["Software Engineering", "Operating Systems", "Database Management Systems", "Computer Networks", "Data Structures", "Algorithms", "Cloud Computing"]
+    }
+  ],
+  "experience": [
+    {
+      "title": "Software Engineer Intern",
+      "company": "Nippon Audiotronix Pvt. Ltd.",
+      "location": "Gurugram",
+      "duration": "Sept 2021 – Present",
+      "bullets": [
+        "Architected and developed backend services for Autonomous Emergency Braking (AEB) system using Python and C++, processing 100+ sensor events/second with <50ms latency",
+        "Implemented real-time sensor fusion algorithms combining LiDAR, camera, and radar data with probabilistic filtering techniques for robust object detection",
+        "Reverse-engineered and integrated CAN Bus protocols for vehicle telemetry data pipelines, achieving 99.9% message delivery reliability",
+        "Executed ASPICE-compliant Unit Testing using Unity framework for high-concurrency embedded systems, achieving 95%+ code coverage",
+        "Optimized C++ embedded code for memory efficiency, reducing heap allocation by 40% through custom data structure design",
+        "Collaborated with hardware team to validate sensor calibration and timing synchronization across distributed ECUs"
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "title": "Distributed File Deduplication & Metadata Service on AWS",
+      "date": "Nov 2024 – Present",
+      "description": "Enterprise-grade hash-based file deduplication service with secure REST APIs and scalable metadata management",
+      "technologies": ["Python", "AWS Lambda", "AWS API Gateway", "AWS S3", "AWS DynamoDB", "AWS IAM", "REST APIs", "Async/Await"],
+      "bullets": [
+        "Designed and implemented hash-based deduplication algorithm reducing storage costs by 60% for duplicate-heavy workloads",
+        "Built serverless REST APIs using API Gateway + Lambda with JWT authentication and role-based access control (RBAC)",
+        "Engineered DynamoDB schemas with global secondary indexes for sub-100ms metadata retrieval on 1M+ records",
+        "Implemented S3 pre-signed URL generation for secure file downloads with configurable expiration windows",
+        "Set up CloudWatch monitoring and X-Ray tracing for real-time API performance diagnostics"
+      ]
+    },
+    {
+      "title": "CloudMon – Real-Time AWS Resource Monitor Dashboard",
+      "date": "Aug 2024 – Oct 2024",
+      "description": "Scalable cloud resource usage dashboard with automated cost alerts and ML-based optimization recommendations",
+      "technologies": ["Python", "Flask", "AWS EC2", "AWS S3", "AWS RDS", "Boto3", "Docker", "PostgreSQL", "Jinja2"],
+      "bullets": [
+        "Built interactive web dashboard using Flask + Jinja2 displaying real-time EC2, RDS, and S3 resource metrics with live updates",
+        "Implemented Boto3 data fetching pipeline with exponential backoff retry logic for AWS API resilience",
+        "Designed PostgreSQL schema with optimized indexes for efficient time-series resource metrics storage and querying",
+        "Containerized application using Docker for consistent deployment across multiple environments",
+        "Reduced idle resource costs by 25% through automated recommendations based on historical usage patterns"
+      ]
+    },
+    {
+      "title": "Real-Time Data Processing Pipeline for Sensor Telemetry",
+      "date": "Mar 2024 – Jul 2024",
+      "description": "High-throughput data processing pipeline handling vehicle telemetry with anomaly detection and alerting",
+      "technologies": ["Python", "Apache Kafka", "PostgreSQL", "Redis", "Unit Testing", "CAN Bus"],
+      "bullets": [
+        "Architected Kafka consumer application processing 10,000+ messages/second from distributed vehicle sensors",
+        "Implemented anomaly detection using statistical methods and real-time alerting for out-of-threshold sensor readings",
+        "Optimized database queries reducing query latency from 5s to 500ms through strategic indexing and query optimization",
+        "Built comprehensive test suite with 100+ unit tests using Python unittest framework, achieving 92% code coverage"
+      ]
+    },
+    {
+      "title": "RESTful Backend API for Task Management System",
+      "date": "Jan 2024 – Feb 2024",
+      "description": "Scalable REST API with authentication, role-based access control, and comprehensive error handling",
+      "technologies": ["Python", "Flask", "JWT", "SQLAlchemy", "PostgreSQL", "Git"],
+      "bullets": [
+        "Developed RESTful API endpoints for user authentication, task CRUD operations, and team collaboration features",
+        "Implemented JWT-based authentication with refresh token rotation for secure session management",
+        "Designed object-relational mapping (ORM) models using SQLAlchemy for efficient database interactions",
+        "Conducted code reviews and maintained clean git history with atomic commits and descriptive messages"
+      ]
+    }
+  ],
+  "achievements": [
+    "Runner-up, Hackbyte Hackathon 2023 – Developed innovative solution achieving 90%+ accuracy, recognized among 500+ participants",
+    "Shortlisted Round 2, Smart India Hackathon 2023 – Advanced to final round as part of top 1% among 100,000+ teams nationwide",
+    "Student Scholar, Gyan Ganga Institute 2021-2023 – Maintained 8.5+ CGPA for consecutive two years",
+    "Technical Volunteer, IEEE Student Chapter – Conducted workshops on embedded systems and cloud technologies"
+  ],
+  "certifications": [
+    "Oracle Cloud AI Professional – Certified in machine learning and AI on Oracle Cloud",
+    "AWS Cloud Architecting – Specialist in designing scalable AWS infrastructure",
+    "AWS Cloud Foundation – Core AWS services and cloud computing concepts",
+    "Cisco Cybersecurity Essentials – Network security and threat mitigation strategies"
+  ],
+  "skills": {
+    "languages": ["Python", "Golang", "C++", "SQL", "Embedded C", "JavaScript", "Bash"],
+    "backend": ["REST APIs", "Microservices", "System Design", "Data Structures", "Algorithms", "API Design"],
+    "cloud": ["AWS EC2", "AWS S3", "AWS Lambda", "AWS RDS", "AWS DynamoDB", "AWS API Gateway", "AWS IAM", "AWS CloudWatch", "Boto3"],
+    "databases": ["PostgreSQL", "MySQL", "AWS DynamoDB", "Redis", "SQLAlchemy"],
+    "tools": ["Git", "Docker", "Debugging Tools", "Logging Systems", "Monitoring Tools", "Postman", "GitHub"],
+    "frameworks": ["Flask", "JWT Authentication", "SQLAlchemy ORM", "Jinja2"],
+    "domains": ["Cloud Cost Optimization", "Sensor Fusion", "CAN Bus protocols", "ASPICE compliance", "Production Systems", "Real-time Data Processing", "Embedded Systems", "System Reliability"],
+    "methodologies": ["Agile/Scrum", "SDLC", "TDD", "CI/CD", "Edge Case Handling", "Code Quality"]
+  }
+}

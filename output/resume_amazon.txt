@@ -1,0 +1,41 @@
+Yash Gupta
+Email: 2004yggupta@gmail.com | Phone: +91 9351951828
+linkedin/yash-gupta | github/gitsofyash
+
+PROFESSIONAL SUMMARY
+Software Engineer with hands-on experience in Python, Golang, SQL, C++, Embedded C, JavaScript, building backend, cloud, and embedded systems. Focused on scalable APIs, reliable data pipelines, testing, and measurable production outcomes aligned to the role. Additional strengths include security-focused API design a...
+
+TECHNICAL SKILLS
+Python, Golang, SQL, PostgreSQL, MySQL, SQLAlchemy, SQLAlchemy ORM, C++, Embedded C, JavaScript, Bash, Flask, REST APIs, Microservices, JWT Authentication, AWS IAM, System Design, Data Structures, Algorithms, API Design
+
+PROFESSIONAL EXPERIENCE
+Software Engineer Intern | Nippon Audiotronix Pvt. Ltd. | Sept 2021 - Present
+- Architected and developed backend services for Autonomous Emergency Braking (AEB) system using Python and C++, processing 100+ sensor events/second...
+- Implemented real-time sensor fusion algorithms combining LiDAR, camera, and radar data with probabilistic filtering techniques for robust object de...
+- Reverse-engineered and integrated CAN Bus protocols for vehicle telemetry data pipelines, achieving 99.9% message delivery reliability
+- Executed ASPICE-compliant Unit Testing using Unity framework for high-concurrency embedded systems, achieving 95%+ code coverage
+
+PROJECTS
+Distributed File Deduplication & Metadata Service on AWS | Python, AWS Lambda, AWS API Gateway, AWS S3, AWS DynamoDB, AWS IAM, REST APIs, Async/Await
+Enterprise-grade hash-based file deduplication service with secure REST APIs and scalable metadata management
+- Designed and implemented hash-based deduplication algorithm reducing storage costs by 60% for duplicate-heavy workloads
+- Built serverless REST APIs using API Gateway + Lambda with JWT authentication and role-based access control (RBAC)
+CloudMon - Real-Time AWS Resource Monitor Dashboard | Python, Flask, AWS EC2, AWS S3, AWS RDS, Boto3, Docker, PostgreSQL, Jinja2
+Scalable cloud resource usage dashboard with automated cost alerts and ML-based optimization recommendations
+- Built interactive web dashboard using Flask + Jinja2 displaying real-time EC2, RDS, and S3 resource metrics with live updates
+- Implemented Boto3 data fetching pipeline with exponential backoff retry logic for AWS API resilience
+Real-Time Data Processing Pipeline for Sensor Telemetry | Python, Apache Kafka, PostgreSQL, Redis, Unit Testing, CAN Bus
+High-throughput data processing pipeline handling vehicle telemetry with anomaly detection and alerting
+- Architected Kafka consumer application processing 10,000+ messages/second from distributed vehicle sensors
+- Implemented anomaly detection using statistical methods and real-time alerting for out-of-threshold sensor readings
+
+EDUCATION
+B.Tech in Computer Science & Business Systems | Gyan Ganga Institute of Technology & Sciences | July 2021 - May 2025
+
+CERTIFICATIONS
+- Oracle Cloud AI Professional - Certified in machine learning and AI on Oracle Cloud
+- AWS Cloud Architecting - Specialist in designing scalable AWS infrastructure
+
+ACHIEVEMENTS
+- Runner-up, Hackbyte Hackathon 2023 - Developed innovative solution achieving 90%+ accuracy, recognized among 500+ participants
+- Shortlisted Round 2, Smart India Hackathon 2023 - Advanced to final round as part of top 1% among 100,000+ teams nationwide

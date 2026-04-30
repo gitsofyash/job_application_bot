@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ name }} - Cover Letter</title>
+    <style>
+        /* ATS-FRIENDLY COVER LETTER STYLING
+         * Optimized for Applicant Tracking Systems
+         * - No colors, images, or complex styling
+         * - Simple fonts that all systems support
+         * - Readable by text parsers
+         * - Standard HTML structure
+         */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, Calibri, Helvetica, sans-serif;
+            font-size: 11pt;
+            line-height: 1.6;
+            color: #000;
+            background: #fff;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 8.5in;
+            margin: 0 auto;
+            padding: 0.5in;
+        }
+        
+        /* DATE */
+        .date {
+            text-align: right;
+            margin-bottom: 20px;
+            font-size: 11pt;
+        }
+        
+        /* PARAGRAPHS */
+        p {
+            margin: 12px 0;
+            text-align: justify;
+            line-height: 1.6;
+            font-size: 11pt;
+        }
+        
+        /* GREETING */
+        .greeting {
+            margin-bottom: 12px;
+        }
+        
+        /* OPENING PARAGRAPH */
+        .opening {
+            margin-bottom: 12px;
+        }
+        
+        /* BODY PARAGRAPHS */
+        .body {
+            margin-bottom: 12px;
+        }
+        
+        /* CLOSING PARAGRAPH */
+        .closing-paragraph {
+            margin-bottom: 12px;
+        }
+        
+        /* SIGNATURE */
+        .signature {
+            margin-top: 20px;
+            font-size: 11pt;
+        }
+        
+        /* PAGE BREAK */
+        @media print {
+            body {
+                padding: 0;
+            }
+            
+            .container {
+                padding: 0.5in;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- DATE -->
+        <div class="date">{{ date }}</div>
+        
+        <!-- GREETING -->
+        <p class="greeting">{{ greeting }}</p>
+        
+        <!-- OPENING PARAGRAPH -->
+        <p class="opening">{{ opening_paragraph }}</p>
+        
+        <!-- BODY PARAGRAPH 1 -->
+        <p class="body">{{ body_paragraph_1 }}</p>
+        
+        <!-- BODY PARAGRAPH 2 -->
+        <p class="body">{{ body_paragraph_2 }}</p>
+        
+        <!-- CLOSING PARAGRAPH -->
+        <p class="closing-paragraph">{{ closing_paragraph }}</p>
+        
+        <!-- SIGNATURE -->
+        <div class="signature">{{ signature }}</div>
+    </div>
+</body>
+</html>
