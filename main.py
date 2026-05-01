@@ -276,20 +276,32 @@ async def orchestrate_application(
                 result.ats_score = round(score, 2)
                 score_color = "green" if result.ats_score >= 90 else "yellow"
                 console.print(f"[bold {score_color}]ATS Score: {result.ats_score}/100[/bold {score_color}]")
-                if result.ats_score < 90 and ats_report.keywords_missing:
-                    console.print(f"[yellow]Missing JD keywords: {', '.join(ats_report.keywords_missing[:8])}[/yellow]")
+                
+                # RETRY LOOP: Regenerate if ATS score < 90
+                retry_count = 0
+                max_retries = 3
+                
+                while result.ats_score < 90 and retry_count < max_retries and ats_report.keywords_missing:
+                    retry_count += 1
+                    console.print(f"[cyan]→ ATS Improvement Pass #{retry_count}/{max_retries}[/cyan]")
+                    console.print(f"[yellow]Missing JD keywords: {', '.join(ats_report.keywords_missing[:10])}[/yellow]")
+                    
                     improved_tailoring, added_keywords, skipped_keywords = improve_tailored_resume_for_ats(
                         result.tailoring,
                         ats_report.keywords_missing,
                     )
+                    
                     if added_keywords:
                         console.print(
-                            f"[cyan]ATS improvement pass: adding truthful keywords: {', '.join(added_keywords[:8])}[/cyan]"
+                            f"[cyan]  ✓ Adding truthful keywords: {', '.join(added_keywords[:5])}[/cyan]"
                         )
-                        if skipped_keywords:
-                            console.print(
-                                f"[dim]Skipped unsupported keywords: {', '.join(skipped_keywords[:8])}[/dim]"
-                            )
+                    
+                    if skipped_keywords and retry_count == 1:
+                        console.print(
+                            f"[dim]  ⊘ Skipped unsupported: {', '.join(skipped_keywords[:5])}[/dim]"
+                        )
+                    
+                    if added_keywords:
                         result.tailoring = improved_tailoring
                         resume_path = await generate_resume_pdf(
                             result.tailoring,
@@ -301,9 +313,18 @@ async def orchestrate_application(
                         score, ats_report = scorer.score_resume(resume_text, extraction.raw_text, str(ats_text_path))
                         result.ats_score = round(score, 2)
                         score_color = "green" if result.ats_score >= 90 else "yellow"
-                        console.print(f"[bold {score_color}]ATS Score after improvement: {result.ats_score}/100[/bold {score_color}]")
-                        if result.ats_score < 90 and ats_report.keywords_missing:
-                            console.print(f"[yellow]Still missing: {', '.join(ats_report.keywords_missing[:8])}[/yellow]")
+                        console.print(f"[bold {score_color}]  → Updated ATS Score: {result.ats_score}/100[/bold {score_color}]")
+                    else:
+                        console.print("[yellow]  ⚠️ No more keywords to add[/yellow]")
+                        break
+                
+                if result.ats_score >= 90:
+                    console.print(f"[green]✓ ATS Score target reached: {result.ats_score}/100[/green]")
+                elif retry_count >= max_retries:
+                    console.print(f"[yellow]⚠️ Max retries reached. Final ATS Score: {result.ats_score}/100[/yellow]")
+                    if ats_report.keywords_missing:
+                        console.print(f"[dim]Still missing: {', '.join(ats_report.keywords_missing[:8])}[/dim]")
+            
             console.print()
         
         except Exception as e:

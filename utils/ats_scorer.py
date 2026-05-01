@@ -75,21 +75,21 @@ class ATSScorer:
         keywords_found, keywords_missing = self._match_keywords(resume_text, jd_keywords)
         keyword_score = len(keywords_found) / max(1, len(jd_keywords)) * 100
 
-        # Check structure (30% weight)
+        # Check structure (25% weight) - reduced from 30%
         structure_score = self._check_structure(resume_text)
 
         # Check content optimization (20% weight)
         content_score = self._check_content_optimization(resume_text)
 
-        # Check skills section (10% weight)
+        # Check skills section (15% weight) - increased from 10%
         skills_score = self._check_skills_section(resume_text)
 
-        # Calculate weighted total
+        # Calculate weighted total (giving more weight to keywords and skills)
         total_score = (
             keyword_score * 0.40 +
-            structure_score * 0.30 +
+            structure_score * 0.25 +
             content_score * 0.20 +
-            skills_score * 0.10
+            skills_score * 0.15
         )
 
         # Generate issues and recommendations
@@ -120,7 +120,7 @@ class ATSScorer:
         keywords = []
 
         # Programming languages
-        languages = ["python", "golang", "go", "java", "c++", "c#", "javascript", "typescript", "rust", "php", "ruby"]
+        languages = ["python", "golang", "go", "java", "c++", "c#", "javascript", "typescript", "rust", "php", "ruby", "kotlin", "swift", "r"]
         for lang in languages:
             if lang in jd_lower:
                 keywords.append(lang)
@@ -130,9 +130,12 @@ class ATSScorer:
             "react", "vue", "angular", "django", "flask", "spring", "fastapi",
             "aws", "azure", "gcp", "docker", "kubernetes", "kafka", "redis",
             "postgresql", "mysql", "mongodb", "dynamodb", "elasticsearch",
-            "lambda", "s3", "ec2", "rds", "api gateway", "iam", "cloudwatch",
-            "boto3", "sqlalchemy", "jwt",
-            "git", "ci/cd", "jenkins", "terraform", "linux", "unix"
+            "lambda", "s3", "ec2", "rds", "iam", "cloudwatch", "api gateway",
+            "boto3", "sqlalchemy", "jwt", "oauth", "nginx", "apache",
+            "rabbitmq", "celery", "grpc", "protobuf", "graphql",
+            "git", "ci/cd", "jenkins", "gitlab", "github actions", 
+            "terraform", "ansible", "helm", "linux", "unix", "bash",
+            "jira", "slack", "fastapi", "aiohttp", "asyncio", "numpy", "pandas"
         ]
         for framework in frameworks:
             if framework in jd_lower:
@@ -146,7 +149,9 @@ class ATSScorer:
             "scalability", "performance optimization", "security", "authentication",
             "authorization", "database design", "query optimization", "caching",
             "api design", "real-time data processing", "sensor fusion", "embedded systems",
-            "can bus", "aspice", "cloud cost optimization"
+            "can bus", "aspice", "cloud cost optimization", "high availability",
+            "disaster recovery", "load balancing", "cdn", "sql injection", 
+            "xss prevention", "rate limiting", "circuit breaker", "event-driven"
         ]
         for concept in concepts:
             if concept in jd_lower:
@@ -155,7 +160,8 @@ class ATSScorer:
         # Soft skills
         soft_skills = [
             "communication", "collaboration", "problem-solving", "attention to detail",
-            "team player", "self-motivated", "quick learner", "analytical"
+            "team player", "self-motivated", "quick learner", "analytical",
+            "mentoring", "leadership", "agile", "scrum"
         ]
         for skill in soft_skills:
             if skill in jd_lower:
@@ -172,22 +178,49 @@ class ATSScorer:
         for keyword in keywords:
             keyword_lower = keyword.lower()
             aliases = {
-                "golang": ["golang", "go"],
+                "golang": ["golang", "go", "golang"],
                 "go": ["golang", "go"],
-                "rest api": ["rest api", "rest apis", "restful"],
-                "lambda": ["lambda", "aws lambda"],
-                "s3": ["s3", "aws s3"],
-                "ec2": ["ec2", "aws ec2"],
-                "rds": ["rds", "aws rds"],
+                "rest api": ["rest api", "rest apis", "restful", "rest services"],
+                "lambda": ["lambda", "aws lambda", "serverless"],
+                "s3": ["s3", "aws s3", "simple storage service"],
+                "ec2": ["ec2", "aws ec2", "elastic compute"],
+                "rds": ["rds", "aws rds", "relational database"],
                 "dynamodb": ["dynamodb", "aws dynamodb"],
                 "api gateway": ["api gateway", "aws api gateway"],
-                "iam": ["iam", "aws iam"],
-                "cloudwatch": ["cloudwatch", "aws cloudwatch"],
-                "monitoring": ["monitoring", "monitor", "cloudwatch", "observability"],
-                "kafka": ["kafka", "apache kafka"],
+                "iam": ["iam", "aws iam", "identity and access"],
+                "cloudwatch": ["cloudwatch", "aws cloudwatch", "monitoring"],
+                "monitoring": ["monitoring", "monitor", "cloudwatch", "observability", "logs", "logging"],
+                "kafka": ["kafka", "apache kafka", "event streaming"],
                 "test-driven development": ["test-driven development", "tdd"],
                 "unit testing": ["unit testing", "unit tests", "test suite", "code coverage", "unity framework"],
-                "ci/cd": ["ci/cd", "pipeline", "github actions"],
+                "ci/cd": ["ci/cd", "pipeline", "github actions", "continuous integration", "continuous deployment", "jenkins"],
+                "system design": ["system design", "system architecture", "architectural design", "scalable systems"],
+                "microservices": ["microservices", "micro-services", "microservice architecture"],
+                "database design": ["database design", "sql design", "schema design"],
+                "caching": ["caching", "cache strategy", "redis cache", "cache management"],
+                "authentication": ["authentication", "oauth", "jwt", "auth"],
+                "authorization": ["authorization", "rbac", "access control"],
+                "api design": ["api design", "api development", "rest design"],
+                "docker": ["docker", "containerization", "container"],
+                "kubernetes": ["kubernetes", "k8s", "container orchestration"],
+                "agile": ["agile", "scrum", "kanban", "sprint", "agile methodology"],
+                "communication": ["communication", "collaboration", "teamwork", "cross-functional"],
+                "algorithms": ["algorithms", "algorithm optimization"],
+                "data structures": ["data structures", "data structure"],
+                "distributed systems": ["distributed systems", "distributed architecture", "distributed computing"],
+                "event-driven": ["event-driven", "event-driven architecture", "event streaming"],
+                "apache": ["apache", "apache kafka", "apache server"],
+                "angular": ["angular", "angular js"],
+                "logging": ["logging", "logs", "centralized logging", "log aggregation"],
+                "scalability": ["scalability", "scalable", "scaling"],
+                "performance optimization": ["performance", "optimization", "optimize"],
+                "security": ["security", "secure", "security practices"],
+                "testing": ["testing", "test", "test automation"],
+                "database": ["database", "sql", "nosql"],
+                "cache": ["cache", "caching", "redis"],
+                "api": ["api", "apis"],
+                "microservice": ["microservices", "microservice"],
+                "cloud": ["cloud", "aws", "azure", "gcp"],
             }.get(keyword_lower, [keyword_lower])
 
             if any(alias in resume_lower for alias in aliases):
@@ -245,44 +278,66 @@ class ATSScorer:
         action_verbs = [
             "developed", "designed", "implemented", "architected", "built",
             "optimized", "improved", "created", "engineered", "deployed",
-            "managed", "led", "coordinated", "analyzed", "solved"
+            "managed", "led", "coordinated", "analyzed", "solved", "enhanced",
+            "accelerated", "boosted", "reduced", "increased", "achieved",
+            "established", "initiated", "modernized", "refactored"
         ]
         action_count = sum(1 for verb in action_verbs if verb in resume_text.lower())
 
-        if action_count < 5:
+        if action_count < 3:
             score -= 20
-        elif action_count < 10:
+        elif action_count < 6:
             score -= 10
+        elif action_count >= 10:
+            score += 5  # Bonus for plenty of action verbs
 
-        # Check for quantifiable results
-        if not re.search(r'\d+%|\d+x|\$\d+|(\d+,?\d+)\+', resume_text):
-            score -= 15
+        # Check for quantifiable results (very important for ATS)
+        quantifiable_matches = re.findall(r'\d+%|\d+x|\$\d+|(\d{1,3},?\d{3,})\+?|\d+\s*(hours|days|weeks|months|years|users|requests|transactions|improvements)', resume_text)
+        
+        if len(quantifiable_matches) == 0:
+            score -= 20
+        elif len(quantifiable_matches) < 3:
+            score -= 10
+        elif len(quantifiable_matches) >= 5:
+            score += 10  # Bonus for multiple quantifiable results
 
         # Check for proper date formatting
         if not re.search(r'\d{4}|\w+\s+\d{4}|20\d{2}', resume_text):
             score -= 10
+        else:
+            # Bonus for good date formatting
+            score += 5
 
         # Check for consistent formatting
         periods_count = resume_text.count('.')
         commas_count = resume_text.count(',')
-        hyphens_count = resume_text.count('-')
 
         if periods_count == 0 or commas_count == 0:
             score -= 15
+        else:
+            score += 3  # Bonus for proper punctuation
 
         # Check for white space efficiency (no excessive blank lines)
         blank_lines = len([line for line in resume_text.split('\n') if not line.strip()])
         total_lines = len(resume_text.split('\n'))
 
-        if blank_lines > total_lines * 0.2:
-            score -= 10
+        if total_lines > 0:
+            blank_ratio = blank_lines / total_lines
+            if blank_ratio > 0.25:
+                score -= 10
+            elif blank_ratio < 0.10:
+                score += 5  # Bonus for efficient use of space
 
-        # Check for page length (1 page = ~250-400 words for one page)
+        # Check for page length (1 page = ~250-450 words for ATS)
         word_count = len(resume_text.split())
-        if word_count > 600:
-            score -= 10  # Too long
-        elif word_count < 200:
-            score -= 5  # Too short
+        if word_count > 700:
+            score -= 15  # Too long
+        elif word_count > 500:
+            score -= 5  # Slightly long
+        elif word_count >= 300:
+            score += 10  # Good word count
+        elif word_count < 150:
+            score -= 10  # Too short
 
         return max(0, min(100, score))
 

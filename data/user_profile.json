@@ -1,17 +1,17 @@
 {
-  "name": "Yash Gupta",
-  "first_name": "Yash",
-  "last_name": "Gupta",
-  "email": "2004yggupta@gmail.com",
-  "phone": "+91 9351951828",
+  "name": "Palak Jaiswal",
+  "first_name": "Palak",
+  "last_name": "Jaiswal",
+  "email": "palakjais9827@gmail.com",
+  "phone": "+91 9827073841",
   "location": {
-    "city": "Alwar",
-    "state": "Rajasthan",
+    "city": "Jabalpur",
+    "state": "Madhya Pradesh",
     "country": "India",
     "secondary_location": "Gurugram, Haryana, India"
   },
-  "linkedin": "linkedin/yash-gupta",
-  "github": "github/gitsofyash",
+  "linkedin": "linkedin/palak-jaiswal1608",
+  "github": "github/palakjaiswal16",
   "currently_employed": true,
   "notice_period_days": 0,
   "willing_to_relocate": true,
@@ -20,9 +20,9 @@
   "desired_roles": [
     "Software Engineer",
     "Backend Engineer",
-    "Cloud Engineer",
-    "Full Stack Engineer",
-    "DevOps Engineer"
+    "AI Engineer",
+    "Machine Learning Engineer"
+  
   ],
   "industry_preferences": [
     "Cloud Infrastructure",
@@ -31,12 +31,12 @@
     "FinTech"
   ],
   "form_field_mappings": {
-    "first_name": "Yash",
-    "last_name": "Gupta",
-    "email": "2004yggupta@gmail.com",
-    "phone": "+91 9351951828",
-    "linkedin_url": "linkedin/yash-gupta",
-    "github_url": "github/gitsofyash",
+    "first_name": "Palak",
+    "last_name": "Jaiswal",
+    "email": "palakjais9827@gmail.com",
+    "phone": "+91 9827073841",
+    "linkedin_url": "linkedin/palak-jaiswal1608",
+    "github_url": "github/palakjaiswal16",
     "current_company": "Nippon Audiotronix Pvt. Ltd.",
     "current_title": "Software Engineer Intern"
   }

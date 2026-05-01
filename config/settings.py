@@ -31,7 +31,7 @@ DATA_DIR.mkdir(exist_ok=True)
 # ═══════════════════════════════════════════════════════════════
 # LLM CONFIGURATION
 # ═══════════════════════════════════════════════════════════════
-LLM_PROVIDER: Literal["OLLAMA", "OPENAI", "ANTHROPIC", "GEMINI"] = os.getenv(
+LLM_PROVIDER: Literal["OLLAMA", "OPENAI", "ANTHROPIC", "GEMINI", "COHERE"] = os.getenv(
     "LLM_PROVIDER", "OLLAMA"
 ).upper()  # type: ignore
 
@@ -46,6 +46,9 @@ ANTHROPIC_MODEL = "claude-opus"
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", os.getenv("GOOGLE_API_KEY", ""))
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-pro")
+
+COHERE_API_KEY = os.getenv("COHERE_API_KEY", "")
+COHERE_MODEL = os.getenv("COHERE_MODEL", "command-r-plus")
 
 # Token guard: max words to process before summarization
 JD_MAX_WORDS = 1000
@@ -115,6 +118,7 @@ VERIFIED_SKILLS = [
     "API Design",
     "Git",
     "Docker",
+    "Kubernetes",
     "VS Code",
     "AWS EC2",
     "AWS S3",
@@ -150,6 +154,11 @@ VERIFIED_SKILLS = [
     "Monitoring Tools",
     "Logging Systems",
     "Debugging Tools",
+    "Distributed Systems",
+    "Event-driven Architecture",
+    "Database Optimization",
+    "Performance Optimization",
+    "Testing",
 ]
 
 # ATS Platform selectors
@@ -169,11 +178,11 @@ ATS_SELECTORS = {
 # ═══════════════════════════════════════════════════════════════
 # RESUME GENERATION SETTINGS
 # ═══════════════════════════════════════════════════════════════
-# Strict 1-page enforcement
-MAX_RESUME_LINES = 45  # Approximate lines per page
-MIN_FONT_SIZE = 8  # Don't go below this
-INITIAL_FONT_SIZE = 9.3  # Fill the page visually, then reduce content if needed
-CONTENT_CUTOFF_THRESHOLD = 0.85  # Stop at 85% of page when reducing
+# Strict 1-page enforcement with optimized content distribution
+MAX_RESUME_LINES = 58  # More realistic for 1-page resume at 10-11pt font
+MIN_FONT_SIZE = 9  # Don't go below this for readability
+INITIAL_FONT_SIZE = 10.5  # Better balance for ATS and visual appeal
+CONTENT_CUTOFF_THRESHOLD = 0.93  # Fill closer to max capacity (93% of page)
 
 # ═══════════════════════════════════════════════════════════════
 # FILE PATHS

@@ -52,6 +52,8 @@ from config.settings import (
     ANTHROPIC_MODEL,
     GEMINI_API_KEY,
     GEMINI_MODEL,
+    COHERE_API_KEY,
+    COHERE_MODEL,
     JD_MAX_WORDS,
     RESUME_TAILOR_LLM_TIMEOUT_SECONDS,
     VERIFIED_SKILLS,
@@ -144,6 +146,8 @@ def get_llm_chain():
       - OLLAMA (local, default)
       - OPENAI (gpt-4-turbo)
       - ANTHROPIC (claude-opus)
+      - GEMINI (gemini-1.5-pro)
+      - COHERE (command-r-plus)
     
     ⚠️ FAILURE POINT: Provider not available → raises ImportError or connection error.
     MITIGATION: Caller can catch and retry with fallback provider.
@@ -201,6 +205,20 @@ def get_llm_chain():
                 model=GEMINI_MODEL,
                 temperature=0.3,
                 timeout=RESUME_TAILOR_LLM_TIMEOUT_SECONDS,
+                max_retries=1,
+            )
+        
+        elif LLM_PROVIDER == "COHERE":
+            from langchain_cohere import ChatCohere
+
+            if not COHERE_API_KEY:
+                raise ValueError("COHERE_API_KEY not set in .env")
+
+            console.log(f"[cyan]Initializing Cohere: {COHERE_MODEL}[/cyan]")
+            return ChatCohere(
+                cohere_api_key=COHERE_API_KEY,
+                model=COHERE_MODEL,
+                temperature=0.3,
                 max_retries=1,
             )
         
@@ -460,20 +478,56 @@ ATS_KEYWORD_SKILL_MAP = {
     "scalability": ["System Design", "Microservices"],
     "security": ["JWT Authentication", "AWS IAM"],
     "authentication": ["JWT Authentication"],
+    "authorization": ["JWT Authentication", "AWS IAM"],
     "ci/cd": ["CI/CD"],
     "unit testing": ["TDD", "Unit Testing (Unity/C)"],
+    "algorithms": ["Algorithms", "Data Structures"],
+    "data structures": ["Data Structures", "Algorithms"],
+    "distributed systems": ["System Design", "Microservices"],
+    "system design": ["System Design"],
+    "event-driven": ["System Design", "Microservices"],
+    "dynamodb": ["AWS DynamoDB"],
+    "apache": ["Kafka", "Apache Kafka"],
+    "agile": ["Agile/Scrum", "SDLC"],
+    "testing": ["TDD", "Unit Testing (Unity/C)"],
+    "database": ["SQL", "MySQL", "PostgreSQL", "SQLAlchemy"],
+    "cache": ["Redis"],
+    "api": ["REST APIs", "API Design"],
+    "microservice": ["Microservices", "System Design"],
+    "kubernetes": ["Docker"],
+    "docker": ["Docker"],
+    "cloud": ["AWS EC2", "AWS S3", "AWS Lambda", "System Design"],
+    "rest": ["REST APIs"],
 }
 
 ATS_KEYWORD_PHRASES = {
     "analytical": "analytical problem-solving",
-    "communication": "clear cross-functional communication",
-    "logging": "structured logging",
-    "monitoring": "production monitoring",
-    "scalability": "scalability",
-    "security": "security-focused API design",
-    "authentication": "authentication",
-    "ci/cd": "CI/CD",
-    "unit testing": "unit testing",
+    "communication": "cross-functional team communication and collaboration",
+    "logging": "structured logging and centralized logging",
+    "monitoring": "production monitoring and observability",
+    "scalability": "system scalability and performance optimization",
+    "security": "security-focused API design and authentication",
+    "authentication": "secure authentication mechanisms",
+    "authorization": "role-based access control",
+    "ci/cd": "CI/CD pipelines and automation",
+    "unit testing": "comprehensive unit testing",
+    "algorithms": "algorithmic optimization",
+    "data structures": "efficient data structure usage",
+    "distributed systems": "distributed system architecture",
+    "system design": "large-scale system design",
+    "event-driven": "event-driven architecture",
+    "dynamodb": "NoSQL database design",
+    "apache": "Apache ecosystem and message queues",
+    "agile": "Agile development methodologies",
+    "testing": "rigorous testing practices",
+    "database": "database optimization and design",
+    "cache": "caching strategies and optimization",
+    "api": "RESTful API development",
+    "microservice": "microservices architecture",
+    "kubernetes": "container orchestration",
+    "docker": "containerization best practices",
+    "cloud": "cloud infrastructure optimization",
+    "rest": "REST API design patterns",
 }
 
 
