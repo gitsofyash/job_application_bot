@@ -31,7 +31,7 @@ DATA_DIR.mkdir(exist_ok=True)
 # ═══════════════════════════════════════════════════════════════
 # LLM CONFIGURATION
 # ═══════════════════════════════════════════════════════════════
-LLM_PROVIDER: Literal["OLLAMA", "OPENAI", "ANTHROPIC", "COHERE"] = os.getenv(
+LLM_PROVIDER: Literal["OLLAMA", "OPENAI", "ANTHROPIC", "COHERE", "GEMINI"] = os.getenv(
     "LLM_PROVIDER", "COHERE"
 ).upper()  # type: ignore
 

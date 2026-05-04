@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 """Test enhanced functionality"""
 
+import sys
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 from utils.url_parser import extract_company_name, fix_encoding_issues, create_resume_filename, create_cover_letter_filename
 
 # Test company name extraction

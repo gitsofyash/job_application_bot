@@ -45,6 +45,8 @@ from config.settings import (
     DRY_RUN,
     DEBUG,
     BASE_RESUME_PATH,
+    RESUME_TAILOR_USE_LLM,
+    COVER_LETTER_USE_LLM,
 )
 
 from modules.m1_extractor import (
@@ -379,7 +381,7 @@ async def orchestrate_application(
         m2_start = asyncio.get_event_loop().time()
         resume_llm_enabled = prompt_enable_llm_tailoring(
             "Enable LLM tailoring for RESUME?",
-            default=False,
+            default=RESUME_TAILOR_USE_LLM,
         )
         
         # OPTIMIZATION: Skip LLM tailoring for very small JDs (< 200 words)
@@ -598,7 +600,7 @@ async def orchestrate_application(
         m5_start = asyncio.get_event_loop().time()
         cover_letter_llm_enabled = prompt_enable_llm_tailoring(
             "Enable LLM tailoring for COVER LETTER?",
-            default=False,
+            default=COVER_LETTER_USE_LLM,
         )
         
         try:

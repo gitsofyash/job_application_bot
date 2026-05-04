@@ -435,6 +435,21 @@ def extract_keywords(text: str) -> List[str]:
     ]
     
     keywords = []
+    ignored_capitalized_terms = {
+        "about",
+        "backend",
+        "company",
+        "description",
+        "engineer",
+        "job",
+        "preferred",
+        "qualifications",
+        "requirements",
+        "responsibilities",
+        "role",
+        "software",
+        "summary",
+    }
     
     for pattern in patterns:
         matches = re.findall(pattern, text, re.IGNORECASE)
@@ -443,9 +458,41 @@ def extract_keywords(text: str) -> List[str]:
             terms = re.split(r"\s*(?:,|/|\||;|\band\b|\bor\b)\s*", match, flags=re.IGNORECASE)
             keywords.extend([term.strip() for term in terms if term.strip()])
     
-    # Also try to find capitalized technical terms
+    known_capitalized_tech_terms = {
+        "aws",
+        "boto3",
+        "ci",
+        "cloudwatch",
+        "docker",
+        "dynamodb",
+        "ec2",
+        "flask",
+        "git",
+        "iam",
+        "java",
+        "javascript",
+        "jwt",
+        "kafka",
+        "kubernetes",
+        "lambda",
+        "mysql",
+        "postgresql",
+        "python",
+        "rds",
+        "redis",
+        "s3",
+        "sql",
+    }
+
+    # Also try to find known capitalized technical terms without treating
+    # company names and section titles as skill gaps.
     technical_terms = re.findall(r"\b([A-Z][a-zA-Z0-9\+\#\.\-]*)\b", text)
-    keywords.extend(technical_terms)
+    keywords.extend(
+        term
+        for term in technical_terms
+        if term.lower() in known_capitalized_tech_terms
+        and term.lower() not in ignored_capitalized_terms
+    )
     
     # Also add verified skills directly mentioned in the JD. This catches exact
     # phrases such as "REST APIs" and "AWS Lambda" that regex snippets can miss.
@@ -458,7 +505,9 @@ def extract_keywords(text: str) -> List[str]:
     seen = set()
     keywords = [
         k for k in keywords
-        if len(k) > 2 and not (k.lower() in seen or seen.add(k.lower()))
+        if len(k) > 2
+        and k.lower() not in ignored_capitalized_terms
+        and not (k.lower() in seen or seen.add(k.lower()))
     ]
     
     return keywords[:30]  # Limit to top 30 keywords
@@ -558,6 +607,7 @@ ATS_KEYWORD_SKILL_MAP = {
     "logging": ["Logging Systems"],
     "monitoring": ["Monitoring Tools", "AWS CloudWatch"],
     "scalability": ["System Design", "Microservices"],
+    "caching": ["Redis"],
     "security": ["JWT Authentication", "AWS IAM"],
     "authentication": ["JWT Authentication"],
     "authorization": ["JWT Authentication", "AWS IAM"],
@@ -580,6 +630,8 @@ ATS_KEYWORD_SKILL_MAP = {
     "cache": ["Redis"],
     "api": ["REST APIs", "API Design"],
     "microservice": ["Microservices", "System Design"],
+    "microservices": ["Microservices", "System Design"],
+    "kafka": ["Apache Kafka"],
     "kubernetes": ["Docker"],
     "docker": ["Docker"],
     "cloud": ["AWS EC2", "AWS S3", "AWS Lambda", "System Design"],
@@ -593,6 +645,7 @@ ATS_KEYWORD_PHRASES = {
     "logging": "structured logging and centralized logging",
     "monitoring": "production monitoring and observability",
     "scalability": "system scalability and performance optimization",
+    "caching": "Redis caching strategies",
     "security": "security-focused API design and authentication",
     "authentication": "secure authentication mechanisms",
     "authorization": "role-based access control",
@@ -611,6 +664,8 @@ ATS_KEYWORD_PHRASES = {
     "cache": "caching strategies and optimization",
     "api": "RESTful API development",
     "microservice": "microservices architecture",
+    "microservices": "microservices architecture",
+    "kafka": "Apache Kafka event streaming",
     "kubernetes": "container orchestration",
     "docker": "containerization best practices",
     "cloud": "cloud infrastructure optimization",
@@ -667,12 +722,17 @@ def improve_tailored_resume_for_ats(
                 seen.add(key)
 
         if unique_terms:
-            ats_sentence = (
-                "Additional strengths include "
-                + ", ".join(unique_terms[:6])
-                + " across reliable backend delivery."
+            core_summary = re.sub(
+                r"\s+Additional strengths\b.*$",
+                "",
+                updated.summary.rstrip(),
+                flags=re.IGNORECASE,
             )
-            updated.summary = f"{updated.summary.rstrip()} {ats_sentence}"
+            first_sentence = core_summary.split(".")[0].strip()
+            if first_sentence:
+                core_summary = f"{first_sentence}."
+            ats_sentence = "Strengths include " + ", ".join(unique_terms[:5]) + "."
+            updated.summary = f"{core_summary} {ats_sentence}"
 
     updated.skills = existing_skills[:24]
     updated.keywords_missing = [
