@@ -20,13 +20,14 @@ Usage:
 
 Environment Variables:
     DEBUG=true            Verbose logging
-    LLM_PROVIDER=OLLAMA   LLM backend (OLLAMA, OPENAI, ANTHROPIC)
+    LLM_PROVIDER=COHERE   LLM backend (COHERE, OLLAMA, OPENAI, ANTHROPIC)
     HEADLESS=false        Show browser window
 """
 
 import asyncio
 import argparse
 import json
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -44,8 +45,6 @@ from config.settings import (
     DRY_RUN,
     DEBUG,
     BASE_RESUME_PATH,
-    RESUME_TAILOR_USE_LLM,
-    COVER_LETTER_USE_LLM,
 )
 
 from modules.m1_extractor import (
@@ -53,6 +52,7 @@ from modules.m1_extractor import (
     ExtractionResult,
     LoginWallError,
     PlatformDetectionError,
+    Platform,
 )
 from modules.m2_tailor import (
     tailor_resume,
@@ -68,7 +68,7 @@ from modules.m5_coverletter import (
     is_local_ollama_available,
 )
 from utils.ats_scorer import ATSScorer
-from utils.url_parser import extract_company_name, fix_encoding_issues
+from utils.url_parser import extract_company_name, fix_encoding_issues, sanitize_filename
 # COMMENTED OUT: Auto-apply feature
 # from modules.m4_apply import apply_to_job, ApplyResult
 
@@ -88,7 +88,10 @@ class PipelineResult:
     job_url: str
     extraction: Optional[ExtractionResult] = None
     tailoring: Optional[TailoredResume] = None
+    jd_text_path: Optional[str] = None
+    output_dir: Optional[str] = None
     resume_path: Optional[str] = None
+    markdown_resume_path: Optional[str] = None
     cover_letter_path: Optional[str] = None
     ats_score: Optional[float] = None
     # application: Optional[ApplyResult] = None  # COMMENTED OUT
@@ -96,8 +99,138 @@ class PipelineResult:
     duration_seconds: float = 0.0
 
 
+def _manual_extraction_result(
+    jd_text: str,
+    source: str = "manual",
+    screenshot_path: Optional[str] = None,
+) -> ExtractionResult:
+    """Create a normal extraction result from manually supplied JD text."""
+    cleaned_text = fix_encoding_issues(jd_text).strip()
+    return ExtractionResult(
+        url=source,
+        raw_text=cleaned_text,
+        platform=Platform.UNKNOWN,
+        word_count=len(cleaned_text.split()),
+        success=bool(cleaned_text),
+        error=None if cleaned_text else "Manual job description is empty",
+        screenshot_path=screenshot_path,
+    )
+
+
+def prompt_for_manual_jd() -> Optional[str]:
+    """Prompt for pasted JD text when CLI extraction fails and stdin is interactive."""
+    if not sys.stdin.isatty():
+        return None
+
+    console.print(
+        "[yellow]Paste the job description now. Finish with a blank line.[/yellow]"
+    )
+    lines = []
+    while True:
+        try:
+            line = input()
+        except EOFError:
+            break
+        if not line.strip() and lines:
+            break
+        lines.append(line)
+
+    manual_text = "\n".join(lines).strip()
+    return manual_text or None
+
+
+def prompt_enable_llm_tailoring(prompt_text: str, default: bool = False) -> bool:
+    """
+    Ask whether to use LLM-backed resume and cover-letter tailoring.
+
+    Returns:
+        Clean boolean for downstream pipeline logic.
+    """
+    if not sys.stdin.isatty():
+        return default
+
+    default_hint = "Y/n" if default else "y/N"
+    valid_yes = {"y", "yes"}
+    valid_no = {"n", "no"}
+
+    while True:
+        try:
+            raw_response = input(f"{prompt_text} [{default_hint}] ")
+        except EOFError:
+            return default
+
+        response = raw_response.strip().lower()
+        if not response:
+            return default
+        if response in valid_yes:
+            return True
+        if response in valid_no:
+            return False
+
+        print("Please enter 'y' or 'n'.")
+
+
+def save_job_description_artifact(
+    extraction: ExtractionResult,
+    company_name: str,
+    output_dir: Path,
+) -> Path:
+    """Save the exact JD text used by tailoring/scoring next to other outputs."""
+    safe_company = sanitize_filename(company_name or "job-posting")
+    output_path = output_dir / f"jd_{safe_company}.txt"
+    output_path.write_text(extraction.raw_text, encoding="utf-8")
+    console.print(f"[green]JD text saved:[/green] {output_path}")
+    return output_path
+
+
+def extract_company_name_from_jd(jd_text: str, fallback: str = "job-posting") -> str:
+    """Best-effort company extraction from JD text with URL-derived fallback."""
+    text = fix_encoding_issues(jd_text or "")
+    patterns = [
+        r"(?im)^\s*company\s*[:\-]\s*([A-Z][A-Za-z0-9&.,' \-]{2,60})\s*$",
+        r"(?im)^\s*about\s+([A-Z][A-Za-z0-9&.,' \-]{2,60})\s*$",
+        r"(?i)\bat\s+([A-Z][A-Za-z0-9&.' \-]{2,50})\s+(?:we|is|are|you will)",
+        r"(?i)([A-Z][A-Za-z0-9&.' \-]{2,50})\s+is\s+(?:hiring|looking for|seeking)",
+    ]
+    stopwords = {"software engineer", "job description", "responsibilities", "requirements"}
+    for pattern in patterns:
+        match = re.search(pattern, text)
+        if match:
+            candidate = match.group(1).strip(" .,-")
+            if candidate.lower() not in stopwords:
+                return sanitize_filename(candidate)
+    return sanitize_filename(fallback)
+
+
+def create_run_output_dir(company_name: str) -> Path:
+    """Create output/{Company_Name}_{YYYYMMDD_HHMMSS}/ for one pipeline run."""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    base = OUTPUT_DIR / f"{sanitize_filename(company_name)}_{timestamp}"
+    output_dir = base
+    suffix = 1
+    while output_dir.exists():
+        suffix += 1
+        output_dir = Path(f"{base}_{suffix}")
+    output_dir.mkdir(parents=True, exist_ok=False)
+    return output_dir
+
+
+def move_artifact_to_output_dir(path_text: Optional[str], output_dir: Path) -> Optional[str]:
+    """Move a pre-workspace artifact, such as an extraction screenshot, into the run folder."""
+    if not path_text:
+        return None
+    source = Path(path_text)
+    if not source.exists() or source.parent.resolve() == output_dir.resolve():
+        return str(source) if source.exists() else path_text
+    destination = output_dir / source.name
+    source.replace(destination)
+    return str(destination)
+
+
 async def orchestrate_application(
     job_url: str,
+    manual_jd_text: Optional[str] = None,
+    manual_jd_source: Optional[str] = None,
     skip_apply: bool = False,
     dry_run: Optional[bool] = None,
 ) -> PipelineResult:
@@ -131,9 +264,9 @@ async def orchestrate_application(
     start_time = asyncio.get_event_loop().time()
     result = PipelineResult(job_url=job_url)
     
-    # Extract company name from URL for file naming
-    company_name = extract_company_name(job_url)
-    console.log(f"[cyan]Extracted company name: {company_name}[/cyan]")
+    company_name = extract_company_name(job_url) if job_url else "manual-jd"
+    output_dir: Optional[Path] = None
+    console.log(f"[cyan]Initial company fallback: {company_name}[/cyan]")
     
     # Load resume data early for use in cover letter generation
     try:
@@ -152,7 +285,7 @@ async def orchestrate_application(
         console.print(
             f"[bold cyan]═══════════════════════════════════════════════════════════[/bold cyan]"
         )
-        console.print(f"[bold]Job URL:[/bold] {job_url}\n")
+        console.print(f"[bold]Job URL:[/bold] {job_url or 'manual JD input'}\n")
         
         # ═══════════════════════════════════════════════════════════════
         # MODULE 1: EXTRACT JOB DESCRIPTION
@@ -170,7 +303,14 @@ async def orchestrate_application(
         
         m1_start = asyncio.get_event_loop().time()
         
-        extraction = await extract_job_description(job_url)
+        if manual_jd_text:
+            console.print("[cyan]Using manually supplied job description[/cyan]\n")
+            extraction = _manual_extraction_result(
+                manual_jd_text,
+                source=manual_jd_source or job_url or "manual",
+            )
+        else:
+            extraction = await extract_job_description(job_url)
         result.extraction = extraction
         
         m1_duration = asyncio.get_event_loop().time() - m1_start
@@ -179,14 +319,47 @@ async def orchestrate_application(
             console.print(
                 f"[red]✗ Module 1 Failed: {extraction.error}[/red]"
             )
-            result.error = f"Extraction failed: {extraction.error}"
-            return result
+            fallback_text = prompt_for_manual_jd()
+            if fallback_text:
+                console.print("[cyan]Continuing with pasted manual JD[/cyan]\n")
+                extraction = _manual_extraction_result(
+                    fallback_text,
+                    source=f"manual fallback for {job_url}",
+                    screenshot_path=extraction.screenshot_path,
+                )
+                result.extraction = extraction
+            else:
+                result.error = (
+                    f"Extraction failed: {extraction.error}. "
+                    "Provide --jd-file or --jd-text to continue manually."
+                )
+                return result
+
+        if extraction.word_count < 80:
+            console.print(
+                f"[yellow]JD is short ({extraction.word_count} words). "
+                "Add a fuller JD with --jd-file or --jd-text for better ATS matching.[/yellow]"
+            )
+
+        company_name = extract_company_name_from_jd(extraction.raw_text, fallback=company_name)
+        output_dir = create_run_output_dir(company_name)
+        result.output_dir = str(output_dir)
+        if extraction.screenshot_path:
+            extraction.screenshot_path = move_artifact_to_output_dir(
+                extraction.screenshot_path,
+                output_dir,
+            )
+        console.print(f"[green]Run workspace:[/green] {output_dir}")
+
+        result.jd_text_path = str(save_job_description_artifact(extraction, company_name, output_dir))
         
         console.print(
             f"[green]✓ Module 1 Complete ({m1_duration:.2f}s)[/green]\n"
         )
         console.print(f"[dim]Platform: {extraction.platform}[/dim]")
         console.print(f"[dim]Words: {extraction.word_count}[/dim]")
+        if extraction.screenshot_path:
+            console.print(f"[dim]Screenshot: {extraction.screenshot_path}[/dim]")
         console.print(f"[dim]Preview: {extraction.raw_text[:200]}...[/dim]\n")
         
         # ═══════════════════════════════════════════════════════════════
@@ -204,14 +377,18 @@ async def orchestrate_application(
         )
         
         m2_start = asyncio.get_event_loop().time()
+        resume_llm_enabled = prompt_enable_llm_tailoring(
+            "Enable LLM tailoring for RESUME?",
+            default=False,
+        )
         
         # OPTIMIZATION: Skip LLM tailoring for very small JDs (< 200 words)
         jd_word_count = len(extraction.raw_text.split()) if extraction.raw_text else 0
         if jd_word_count < 200:
             console.print(f"[yellow]⚠️ JD too small ({jd_word_count} words), using fast ATS tailoring[/yellow]\n")
             result.tailoring = build_rule_based_tailored_resume(extraction.raw_text)
-        elif not RESUME_TAILOR_USE_LLM:
-            console.print("[cyan]Fast ATS resume tailoring enabled (RESUME_TAILOR_USE_LLM=false)[/cyan]\n")
+        elif not resume_llm_enabled:
+            console.print("[cyan]Fast ATS resume tailoring enabled (LLM prompt disabled)[/cyan]\n")
             result.tailoring = build_rule_based_tailored_resume(extraction.raw_text)
         else:
             try:
@@ -256,9 +433,14 @@ async def orchestrate_application(
         try:
             resume_path = await generate_resume_pdf(
                 result.tailoring,
-                company_name=company_name
+                company_name=company_name,
+                job_description=extraction.raw_text,
+                output_dir=output_dir,
             )
             result.resume_path = str(resume_path)
+            markdown_resume_path = Path(resume_path).with_suffix(".md")
+            if markdown_resume_path.exists():
+                result.markdown_resume_path = str(markdown_resume_path)
             
             m3_duration = asyncio.get_event_loop().time() - m3_start
             
@@ -302,18 +484,29 @@ async def orchestrate_application(
                         )
                     
                     if added_keywords:
+                        previous_score = result.ats_score
                         result.tailoring = improved_tailoring
                         resume_path = await generate_resume_pdf(
                             result.tailoring,
                             company_name=company_name,
+                            job_description=extraction.raw_text,
+                            output_dir=output_dir,
                         )
                         result.resume_path = str(resume_path)
+                        markdown_resume_path = Path(resume_path).with_suffix(".md")
+                        if markdown_resume_path.exists():
+                            result.markdown_resume_path = str(markdown_resume_path)
                         ats_text_path = Path(resume_path).with_suffix(".txt")
                         resume_text = ats_text_path.read_text(encoding="utf-8")
                         score, ats_report = scorer.score_resume(resume_text, extraction.raw_text, str(ats_text_path))
                         result.ats_score = round(score, 2)
                         score_color = "green" if result.ats_score >= 90 else "yellow"
                         console.print(f"[bold {score_color}]  → Updated ATS Score: {result.ats_score}/100[/bold {score_color}]")
+                        if result.ats_score <= previous_score:
+                            console.print(
+                                "[yellow]  No ATS gain after base-resume-safe updates; stopping retry loop[/yellow]"
+                            )
+                            break
                     else:
                         console.print("[yellow]  ⚠️ No more keywords to add[/yellow]")
                         break
@@ -403,11 +596,15 @@ async def orchestrate_application(
         )
         
         m5_start = asyncio.get_event_loop().time()
+        cover_letter_llm_enabled = prompt_enable_llm_tailoring(
+            "Enable LLM tailoring for COVER LETTER?",
+            default=False,
+        )
         
         try:
             try:
-                if not COVER_LETTER_USE_LLM:
-                    raise RuntimeError("fast cover-letter mode is enabled")
+                if not cover_letter_llm_enabled:
+                    raise RuntimeError("LLM prompt disabled")
                 if not is_local_ollama_available():
                     raise RuntimeError("Ollama is not running at localhost:11434")
                 cover_letter = await generate_cover_letter(
@@ -426,7 +623,8 @@ async def orchestrate_application(
             # Save cover letter with company-based naming
             cover_letter_path = await save_cover_letter(
                 cover_letter,
-                company_name=company_name
+                company_name=company_name,
+                output_dir=output_dir,
             )
             result.cover_letter_path = str(cover_letter_path)
             
@@ -572,7 +770,9 @@ def print_pipeline_summary(result: PipelineResult) -> None:
         console.print(f"[green]✓ Pipeline completed[/green]")
     
     # Save result to JSON
-    result_file = OUTPUT_DIR / f"result_{int(asyncio.get_event_loop().time())}.json"
+    result_dir = Path(result.output_dir) if result.output_dir else OUTPUT_DIR
+    result_dir.mkdir(parents=True, exist_ok=True)
+    result_file = result_dir / "result.json"
     
     result_dict = {
         "job_url": result.job_url,
@@ -580,7 +780,10 @@ def print_pipeline_summary(result: PipelineResult) -> None:
         "duration_seconds": result.duration_seconds,
         "extraction": result.extraction.model_dump() if result.extraction else None,
         "tailoring": result.tailoring.model_dump() if result.tailoring else None,
+        "output_dir": result.output_dir,
+        "jd_text_path": result.jd_text_path,
         "resume_path": result.resume_path,
+        "markdown_resume_path": result.markdown_resume_path,
         "cover_letter_path": result.cover_letter_path,
         "ats_score": result.ats_score,
         # "application": result.application.model_dump() if result.application else None,  # COMMENTED OUT
@@ -615,9 +818,23 @@ Examples:
     
     parser.add_argument(
         "--url",
-        required=True,
         help="Job posting URL to extract JD and generate resume/cover letter",
         type=str,
+        default="",
+    )
+
+    parser.add_argument(
+        "--jd-file",
+        help="Path to a text file containing the job description, used instead of URL extraction",
+        type=str,
+        default="",
+    )
+
+    parser.add_argument(
+        "--jd-text",
+        help="Raw job description text, used instead of URL extraction",
+        type=str,
+        default="",
     )
     
     parser.add_argument(
@@ -626,7 +843,10 @@ Examples:
         help="Enable debug logging",
     )
     
-    return parser.parse_args()
+    args = parser.parse_args()
+    if not args.url and not args.jd_file and not args.jd_text:
+        parser.error("Provide --url, --jd-file, or --jd-text")
+    return args
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -637,10 +857,19 @@ Examples:
 async def main():
     """Main entry point"""
     args = parse_args()
+
+    manual_jd_text = args.jd_text.strip() if args.jd_text else ""
+    manual_jd_source = "manual --jd-text" if manual_jd_text else None
+    if args.jd_file:
+        jd_file_path = Path(args.jd_file)
+        manual_jd_text = jd_file_path.read_text(encoding="utf-8").strip()
+        manual_jd_source = str(jd_file_path)
     
     # Run orchestration
     result = await orchestrate_application(
         job_url=args.url,
+        manual_jd_text=manual_jd_text or None,
+        manual_jd_source=manual_jd_source,
         skip_apply=False,  # Auto-apply is disabled, always skip
         dry_run=None,
     )

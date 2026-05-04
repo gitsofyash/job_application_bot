@@ -1,4 +1,4 @@
-﻿"""
+"""
 MODULE 3 â€” Dynamic Resume PDF Generator
 
 Generates tailored resume PDF from Jinja2 template + tailored content.
@@ -39,7 +39,7 @@ import json
 import asyncio
 import re
 from pathlib import Path
-from typing import Optional, Dict, Any, Iterable
+from typing import Optional, Dict, Any, Iterable, List
 from dataclasses import dataclass
 
 from jinja2 import Environment, FileSystemLoader, TemplateError, TemplateNotFound
@@ -59,11 +59,22 @@ from config.settings import (
     INITIAL_FONT_SIZE,
     CONTENT_CUTOFF_THRESHOLD,
     VERIFIED_SKILLS,
+    LLM_PROVIDER,
+    OLLAMA_MODEL,
+    OPENAI_MODEL,
+    ANTHROPIC_MODEL,
+    COHERE_MODEL,
+    RESUME_TAILOR_USE_LLM,
+    COVER_LETTER_USE_LLM,
 )
-from modules.m2_tailor import TailoredResume, ExperienceItem
+from modules.m2_tailor import TailoredResume, ExperienceItem, extract_keywords, invoke_cohere_json
 from utils.url_parser import fix_encoding_issues, create_resume_filename
 
 console = Console()
+
+LETTER_PAGE_WIDTH = "8.5in"
+LETTER_PAGE_HEIGHT = "11in"
+RESUME_PAGE_PADDING = "0.32in"
 
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # MODELS
@@ -93,11 +104,11 @@ class ResumeData(BaseModel):
 
 def trim_bullet_point(bullet: str, max_length: int = 120) -> str:
     """
-    Trim bullet point to fit on resume.
+    Trim bullet point to fit on resume with optimal line breaking.
     
     Args:
         bullet: Bullet point text
-        max_length: Maximum characters per bullet
+        max_length: Maximum characters per bullet (optimized for 8-9pt fonts)
         
     Returns:
         Trimmed bullet
@@ -108,9 +119,30 @@ def trim_bullet_point(bullet: str, max_length: int = 120) -> str:
     if len(bullet) <= max_length:
         return bullet
     
-    # Trim to max_length and add ellipsis
-    trimmed = bullet[:max_length - 3] + "..."
-    return trimmed
+    # Find the last word boundary within the limit
+    trimmed = bullet[:max_length]
+    last_space = trimmed.rfind(" ")
+    
+    if last_space > max_length * 0.7:  # Ensure we don't cut too early
+        trimmed = bullet[:last_space]
+    else:
+        trimmed = bullet[:max_length]
+    
+    # Clean up trailing punctuation/whitespace
+    trimmed = trimmed.rstrip(" ,;:-")
+    
+    return (trimmed if trimmed else bullet[:max_length]).rstrip()
+
+
+
+def close_sentence(text: str) -> str:
+    """Ensure compact resume prose does not end mid-thought."""
+    text = text.strip()
+    if text.endswith("distributed system"):
+        text = f"{text}s"
+    if text and text[-1] not in ".!?":
+        return f"{text}."
+    return text
 
 
 def flatten_base_skills(base_resume: Dict[str, Any]) -> list[str]:
@@ -143,7 +175,7 @@ def expand_skills_for_jd(
     selected_skills: list[str],
     base_resume: Dict[str, Any],
     tailored_resume: Optional[TailoredResume],
-    max_skills: int = 22,
+    max_skills: int = 24,
 ) -> list[str]:
     """
     Fill the skills section with JD-matched verified skills already present in the resume.
@@ -152,7 +184,6 @@ def expand_skills_for_jd(
     compact cap so the strict one-page layout still holds.
     """
     base_skills = flatten_base_skills(base_resume)
-    verified_lookup = {skill.lower(): skill for skill in VERIFIED_SKILLS}
     base_lookup = {skill.lower(): skill for skill in base_skills}
     priority_terms = []
 
@@ -165,9 +196,12 @@ def expand_skills_for_jd(
 
     def add_skill(skill: str) -> None:
         key = skill.lower()
-        if key not in seen and (key in verified_lookup or key in base_lookup):
-            ordered.append(base_lookup.get(key, verified_lookup.get(key, skill)))
+        if key not in seen and key in base_lookup:
+            ordered.append(base_lookup[key])
             seen.add(key)
+
+    for skill in selected_skills:
+        add_skill(skill)
 
     for term in priority_terms:
         term_lower = str(term).lower()
@@ -175,11 +209,8 @@ def expand_skills_for_jd(
             candidate_lower = candidate.lower()
             if candidate_lower == term_lower or candidate_lower in term_lower or term_lower in candidate_lower:
                 add_skill(candidate)
-        if term_lower in verified_lookup:
-            add_skill(verified_lookup[term_lower])
-
-    for skill in selected_skills:
-        add_skill(skill)
+        if term_lower in base_lookup:
+            add_skill(base_lookup[term_lower])
 
     for skill in base_skills:
         if len(ordered) >= max_skills:
@@ -193,28 +224,32 @@ def prioritize_resume_content(
     resume_data: ResumeData,
     max_experience_items: int = 2,
     max_bullets_per_job: int = 5,
-    max_projects: int = 4,
+    max_projects: int = 3,
     max_bullets_per_project: int = 3,
     max_education_items: int = 1,
-    max_certifications: int = 3,
-    max_achievements: int = 3,
+    max_certifications: int = 999,
+    max_achievements: int = 999,
+    jd_keywords: Optional[List[str]] = None,
 ) -> ResumeData:
     """
-    Prioritize resume content for 1-page constraint.
+    Prioritize resume content for full-page constraint with JD-based project selection.
     
     Strategy:
       1. Keep top N experience items (most recent)
-      2. Keep top N bullets per job
+      2. Keep top N bullets per job (optimize for 1-page)
       3. Keep top N education items
-      4. Keep JD-relevant projects with compact bullets
+      4. Select exactly N JD-relevant projects
       5. Trim skill list to a compact ATS-friendly set
-      6. Keep compact certifications/achievements when they fit
+      6. Keep certifications and achievements within space limits
     
     Args:
         resume_data: Original resume data
         max_experience_items: Max work experience entries
         max_bullets_per_job: Max bullets per job
+        max_projects: Max projects to include
+        max_bullets_per_project: Max bullets per project
         max_education_items: Max education entries
+        jd_keywords: Optional JD keywords for project selection
         
     Returns:
         Prioritized resume data
@@ -222,56 +257,237 @@ def prioritize_resume_content(
     # Truncate experience to top items
     if len(resume_data.experience) > max_experience_items:
         console.log(
-            f"[yellow]âš ï¸ Trimming experience from {len(resume_data.experience)} to {max_experience_items} items[/yellow]"
+            f"[yellow]⚠️ Trimming experience from {len(resume_data.experience)} to {max_experience_items} items[/yellow]"
         )
         resume_data.experience = resume_data.experience[:max_experience_items]
     
-    # Trim bullets per job
+    # Trim bullets per job with aggressive character limits for 8-9pt fonts
     for job in resume_data.experience:
         if "bullets" in job and len(job["bullets"]) > max_bullets_per_job:
             console.log(
-                f"[yellow]âš ï¸ Trimming bullets for {job.get('company', 'Unknown')} "
+                f"[yellow]⚠️ Trimming bullets for {job.get('company', 'Unknown')} "
                 f"from {len(job['bullets'])} to {max_bullets_per_job}[/yellow]"
             )
             job["bullets"] = job["bullets"][:max_bullets_per_job]
             
         if "bullets" in job:
-            job["bullets"] = [trim_bullet_point(b, max_length=150) for b in job["bullets"]]
+            job["bullets"] = [trim_bullet_point(b, max_length=140) for b in job["bullets"]]
     
-    # Keep a compact project section to honestly cover JD technologies.
-    if len(resume_data.projects) > max_projects:
-        console.log(
-            f"[yellow]Trimming projects from {len(resume_data.projects)} to {max_projects} items[/yellow]"
-        )
-        resume_data.projects = resume_data.projects[:max_projects]
+    # JD-based project selection: keep exactly N projects when available
+    if jd_keywords and resume_data.projects:
+        resume_data.projects = select_jd_relevant_projects(resume_data.projects, jd_keywords, max_projects)
+    else:
+        if len(resume_data.projects) > max_projects:
+            console.log(
+                f"[yellow]Selecting top {max_projects} projects from {len(resume_data.projects)} base projects[/yellow]"
+            )
+            resume_data.projects = resume_data.projects[:max_projects]
 
+    # Trim project bullets with aggressive character limits
     for project in resume_data.projects:
         if "bullets" in project and len(project["bullets"]) > max_bullets_per_project:
             project["bullets"] = project["bullets"][:max_bullets_per_project]
         if "bullets" in project:
-            project["bullets"] = [trim_bullet_point(b, max_length=145) for b in project["bullets"]]
+            project["bullets"] = [trim_bullet_point(b, max_length=135) for b in project["bullets"]]
 
     # Truncate education
     if len(resume_data.education) > max_education_items:
         console.log(
-            f"[yellow]âš ï¸ Trimming education from {len(resume_data.education)} to {max_education_items} items[/yellow]"
+            f"[yellow]⚠️ Trimming education from {len(resume_data.education)} to {max_education_items} items[/yellow]"
         )
         resume_data.education = resume_data.education[:max_education_items]
     
     # Limit skills to a compact ATS-friendly set
-    if len(resume_data.skills) > 22:
+    if len(resume_data.skills) > 24:
         console.log(
-            f"[yellow]Trimming skills from {len(resume_data.skills)} to 22[/yellow]"
+            f"[yellow]Trimming skills from {len(resume_data.skills)} to 24[/yellow]"
         )
-        resume_data.skills = resume_data.skills[:22]
+        resume_data.skills = resume_data.skills[:24]
     
-    if len(resume_data.certifications) > max_certifications:
-        resume_data.certifications = resume_data.certifications[:max_certifications]
-
-    if len(resume_data.achievements) > max_achievements:
-        resume_data.achievements = resume_data.achievements[:max_achievements]
+    # Trim certifications and achievements with character limits
+    resume_data.certifications = [
+        close_sentence(trim_bullet_point(cert, max_length=125))
+        for cert in resume_data.certifications
+    ][:max_certifications]
+    
+    resume_data.achievements = [
+        close_sentence(trim_bullet_point(achievement, max_length=145))
+        for achievement in resume_data.achievements
+    ][:max_achievements]
     
     return resume_data
+
+
+
+def select_jd_relevant_projects(
+    projects: List[Dict[str, Any]],
+    jd_keywords: List[str],
+    max_projects: int = 6,
+) -> List[Dict[str, Any]]:
+    """
+    Select and rank projects based on JD keyword relevance.
+    
+    This improves ATS score by prioritizing projects that use technologies
+    mentioned in the job description.
+    
+    Args:
+        projects: List of all projects from base resume
+        jd_keywords: Keywords extracted from job description
+        max_projects: Maximum number of projects to include
+        
+    Returns:
+        Sorted list of projects (most relevant first)
+    """
+    if not projects or not jd_keywords:
+        return projects[:max_projects]
+    
+    # Normalize JD keywords for matching
+    jd_lower = [kw.lower() for kw in jd_keywords]
+    
+    def calculate_project_score(project: Dict[str, Any]) -> float:
+        """Calculate relevance score for a project based on JD keywords."""
+        score = 0.0
+        project_text = ""
+        
+        # Collect all project text for matching
+        project_text += project.get("title", "").lower() + " "
+        project_text += project.get("description", "").lower() + " "
+        project_text += " ".join(project.get("technologies", [])).lower() + " "
+        project_text += " ".join(project.get("bullets", [])).lower()
+        technologies = [str(tech).lower() for tech in project.get("technologies", [])]
+        unique_matches = set()
+        
+        # Score based on keyword matches
+        for jd_kw in jd_lower:
+            if len(jd_kw) < 3:
+                continue
+            # Exact match in technologies (highest weight)
+            for tech in technologies:
+                if jd_kw == tech or jd_kw in tech or tech in jd_kw:
+                    score += 6.0
+                    unique_matches.add(jd_kw)
+                    break
+            
+            # Match in title
+            if jd_kw in project.get("title", "").lower():
+                score += 4.0
+                unique_matches.add(jd_kw)
+            
+            # Match in description
+            if jd_kw in project.get("description", "").lower():
+                score += 3.0
+                unique_matches.add(jd_kw)
+            
+            # Match in bullets
+            if any(jd_kw in str(bullet).lower() for bullet in project.get("bullets", [])):
+                score += 2.0
+                unique_matches.add(jd_kw)
+
+        score += len(unique_matches) * 5.0
+
+        # Keep domain-specific projects honest: do not let generic LLM/AI projects
+        # outrank backend/cloud/data projects unless the JD asks for AI.
+        if not any(term in " ".join(jd_lower) for term in ["ai", "llm", "generative", "rag", "openai"]):
+            if any(term in project_text for term in ["openai", "large language model", "llm", "generative ai"]):
+                score -= 12.0
+        
+        return score
+    
+    # Score all projects
+    scored_projects = [(p, calculate_project_score(p)) for p in projects]
+    
+    # Sort by score (descending) and then by original order for ties
+    scored_projects.sort(key=lambda x: (-x[1], projects.index(x[0])))
+
+    positive_matches = [(project, score) for project, score in scored_projects if score > 0]
+    if not positive_matches:
+        console.log("[yellow]No JD-matched base projects found; generating domain-safe fallback project[/yellow]")
+        return [build_fallback_project(jd_keywords)]
+    
+    selected = [project for project, _ in positive_matches[:max_projects]]
+    if len(selected) < max_projects:
+        selected_ids = {id(project) for project in selected}
+        for project, _ in scored_projects:
+            if id(project) not in selected_ids:
+                selected.append(project)
+                selected_ids.add(id(project))
+            if len(selected) >= max_projects:
+                break
+    
+    # Log which projects were selected and why
+    console.log(f"[cyan]JD-based project selection:[/cyan]")
+    for i, (p, score) in enumerate(scored_projects[:max_projects]):
+        if score > 0:
+            console.log(f"  {i+1}. {p.get('title', 'Unknown')} (score: {score:.1f})")
+    
+    return selected
+
+
+def build_fallback_project(jd_keywords: List[str]) -> Dict[str, Any]:
+    """
+    Draft one realistic fallback project within Yash's verified embedded/ADAS domain.
+    """
+    keyword_text = ", ".join(str(keyword) for keyword in jd_keywords[:20])
+    prompt = f"""Generate a JSON object for exactly one resume project.
+
+Hard constraints:
+- The project MUST stay within Yash Gupta's actual domain only:
+  Automotive Embedded Systems, ADAS, C++/Python, NVIDIA Jetson/NXP i.MX platforms,
+  computer vision, edge AI, CAN bus, sensor fusion, and real-time embedded systems.
+- Do NOT invent unrelated cloud/SaaS/full-stack/mobile/blockchain projects.
+- Keep it realistic for a student/early-career embedded software engineer.
+- Return ONLY valid JSON with this schema:
+  {{
+    "title": "string",
+    "date": "string",
+    "description": "string",
+    "technologies": ["string"],
+    "bullets": ["string", "string"]
+  }}
+
+JD keywords to consider: {keyword_text}
+"""
+    try:
+        parsed = json.loads(invoke_cohere_json(prompt, max_tokens=500))
+        return normalize_project(parsed)
+    except Exception as e:
+        console.log(f"[yellow]Cohere fallback project unavailable; using deterministic domain fallback: {e}[/yellow]")
+        return normalize_project(
+            {
+                "title": "Edge ADAS Object Detection Pipeline",
+                "date": "2024",
+                "description": "Built a realistic edge-AI prototype for automotive perception on embedded hardware.",
+                "technologies": ["Python", "C++", "OpenCV", "NVIDIA Jetson", "CAN Bus"],
+                "bullets": [
+                    "Implemented camera-frame preprocessing and object detection for ADAS-style perception workloads on edge hardware.",
+                    "Integrated Python/C++ modules with CAN-style telemetry simulation for real-time validation and alerting.",
+                ],
+            }
+        )
+
+
+def normalize_project(project: Dict[str, Any]) -> Dict[str, Any]:
+    """Clean and constrain an LLM-generated fallback project."""
+    technologies = project.get("technologies", [])
+    bullets = project.get("bullets", [])
+    if isinstance(technologies, str):
+        technologies = [part.strip() for part in technologies.split(",") if part.strip()]
+    if isinstance(bullets, str):
+        bullets = [line.strip(" -") for line in bullets.splitlines() if line.strip()]
+
+    return {
+        "title": fix_encoding_issues(str(project.get("title") or "Edge ADAS Embedded Systems Project"))[:90],
+        "date": fix_encoding_issues(str(project.get("date") or "2024"))[:30],
+        "description": trim_bullet_point(
+            fix_encoding_issues(str(project.get("description") or "Built an embedded ADAS prototype using C++/Python and edge AI.")),
+            max_length=135,
+        ),
+        "technologies": [fix_encoding_issues(str(tech)) for tech in technologies[:7]],
+        "bullets": [
+            trim_bullet_point(fix_encoding_issues(str(bullet)), max_length=135)
+            for bullet in bullets[:2]
+        ],
+    }
 
 
 def enforce_one_page_html(html: str, min_font_size: int = MIN_FONT_SIZE) -> str:
@@ -279,10 +495,11 @@ def enforce_one_page_html(html: str, min_font_size: int = MIN_FONT_SIZE) -> str:
     Enforce 1-page constraint on HTML resume via CSS.
     
     Strategy:
-      1. Reduce margins and padding
-      2. Reduce line height
-      3. Reduce font sizes progressively
-      4. Add CSS print directive
+      1. Reduce margins and padding aggressively
+      2. Reduce line height to minimum readable levels
+      3. Adjust font sizes progressively
+      4. Add strict CSS print directive
+      5. Prevent page breaks mid-section
     
     Args:
         html: Original HTML resume
@@ -291,108 +508,175 @@ def enforce_one_page_html(html: str, min_font_size: int = MIN_FONT_SIZE) -> str:
     Returns:
         Modified HTML with 1-page enforcement CSS
     """
-    # Add aggressive CSS for 1-page constraint
+    effective_font_size = max(float(min_font_size), 11.15)
+    
     one_page_css = f"""
     <style>
         @page {{
             size: Letter;
-            margin: 0.4in;
+            margin: 0;
         }}
         
         @media print {{
-            body {{ margin: 0; padding: 0; }}
-            .container {{ 
-                max-height: 10.2in;
-                overflow: hidden;
-                box-shadow: none;
-                padding: 0.4in;
+            body {{
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+                margin: 0 !important;
+                padding: 0 !important;
+            }}
+            
+            .container {{
+                width: {LETTER_PAGE_WIDTH} !important;
+                height: {LETTER_PAGE_HEIGHT} !important;
+                max-height: none !important;
+                overflow: hidden !important;
+                box-shadow: none !important;
+                padding: {RESUME_PAGE_PADDING} !important;
+                margin: 0 !important;
+            }}
+            
+            .section {{
+                page-break-inside: avoid !important;
+                margin-bottom: 0 !important;
+            }}
+            
+            .subsection {{
+                page-break-inside: avoid !important;
+            }}
+            
+            .entry {{
+                page-break-inside: avoid !important;
             }}
         }}
         
         body {{
-            margin: 0;
-            padding: 0;
+            margin: 0 !important;
+            padding: 0 !important;
         }}
         
         .container {{
-            max-width: 8.5in;
-            max-height: 11in;
-            margin: 0 auto;
-            padding: 0.35in;
-            font-size: {min_font_size}pt;
-            line-height: 1.2;
+            width: {LETTER_PAGE_WIDTH} !important;
+            height: {LETTER_PAGE_HEIGHT} !important;
+            max-width: none !important;
+            max-height: none !important;
+            margin: 0 !important;
+            padding: {RESUME_PAGE_PADDING} !important;
+            overflow: hidden !important;
+            font-size: {effective_font_size}pt !important;
+            line-height: 1.22 !important;
         }}
         
         .header {{
-            margin-bottom: 6px;
-            padding-bottom: 4px;
+            margin-bottom: 5px !important;
+            padding-bottom: 3px !important;
         }}
         
         .name {{
-            font-size: {min(min_font_size + 6, 14)}pt;
-            margin: 0;
+            font-size: 16pt !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            line-height: 1 !important;
         }}
         
         .contact {{
-            font-size: {min_font_size - 1}pt;
-            margin: 2px 0 0 0;
+            font-size: 9.6pt !important;
+            margin: 1px 0 0 0 !important;
+            padding: 0 !important;
+            line-height: 1.1 !important;
         }}
         
         .section {{
-            margin-top: 6px;
+            margin-top: 6px !important;
+            margin-bottom: 0 !important;
+            page-break-inside: avoid !important;
         }}
         
         .section-title {{
-            font-size: {min(min_font_size + 1, 11)}pt;
-            margin: 4px 0 3px 0;
-            padding-bottom: 2px;
+            font-size: 11pt !important;
+            margin: 0 0 3px 0 !important;
+            padding-bottom: 1px !important;
+            line-height: 1 !important;
         }}
         
         .subsection {{
-            margin-bottom: 4px;
+            margin-bottom: 4px !important;
+            page-break-inside: avoid !important;
+        }}
+        
+        .entry {{
+            margin-bottom: 4px !important;
+            page-break-inside: avoid !important;
         }}
         
         .job-header {{
-            font-size: {min_font_size}pt;
-            margin-bottom: 1px;
+            font-size: {effective_font_size}pt !important;
+            margin-bottom: 1px !important;
+            line-height: 1.1 !important;
         }}
         
         .job-title {{
-            font-size: {min_font_size}pt;
-            margin-bottom: 1px;
+            font-size: {effective_font_size}pt !important;
+            margin-bottom: 1px !important;
+            line-height: 1.14 !important;
+        }}
+        
+        .entry-header {{
+            font-size: {effective_font_size}pt !important;
+            margin-bottom: 1px !important;
+            line-height: 1.08 !important;
+        }}
+        
+        .entry-subtitle {{
+            font-size: {effective_font_size}pt !important;
+            margin: 0 !important;
+            line-height: 1.14 !important;
         }}
         
         ul {{
-            margin: 2px 0;
-            padding-left: 16px;
+            margin: 2px 0 0 14px !important;
+            padding: 0 !important;
         }}
         
         li {{
-            margin: 1px 0;
-            font-size: {min_font_size - 0.5}pt;
-            line-height: 1.2;
+            margin: 0 0 1px 0 !important;
+            padding: 0 !important;
+            font-size: {max(effective_font_size - 0.2, 11.0)}pt !important;
+            line-height: 1.2 !important;
         }}
         
         .skills-list {{
-            gap: 4px;
-            margin-top: 2px;
+            gap: 4px !important;
+            margin-top: 1px !important;
         }}
         
         .skill-tag {{
-            font-size: {min_font_size - 1}pt;
-            padding: 1px 3px;
+            font-size: 10pt !important;
+            padding: 1px 3px !important;
+        }}
+        
+        .summary {{
+            margin: 0 !important;
+            padding: 0 !important;
+            font-size: {max(effective_font_size - 0.2, 11.0)}pt !important;
+            line-height: 1.2 !important;
+        }}
+        
+        .skills {{
+            margin: 0 !important;
+            padding: 0 !important;
+            font-size: {max(effective_font_size - 0.2, 11.0)}pt !important;
+            line-height: 1.2 !important;
         }}
     </style>
     """
     
-    # Find where to insert CSS
     if "</head>" in html:
         html = html.replace("</head>", one_page_css + "</head>")
     else:
-        # Insert before body if no head
         html = one_page_css + html
     
     return html
+
 
 
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -648,26 +932,244 @@ def save_plain_text_resume(resume_data: ResumeData, output_path: str) -> Path:
     return text_path
 
 
+def _provider_model_name() -> str:
+    """Return the configured model name for the active provider."""
+    models = {
+        "OLLAMA": OLLAMA_MODEL,
+        "OPENAI": OPENAI_MODEL,
+        "ANTHROPIC": ANTHROPIC_MODEL,
+        "COHERE": COHERE_MODEL,
+    }
+    return models.get(LLM_PROVIDER, "unknown")
+
+
+def build_pipeline_verification() -> str:
+    """Describe which LLMs were active for this generated resume artifact."""
+    resume_engine = (
+        f"{LLM_PROVIDER} / {_provider_model_name()}"
+        if RESUME_TAILOR_USE_LLM
+        else "Deterministic ATS tailoring (resume LLM disabled)"
+    )
+    cover_engine = (
+        f"{LLM_PROVIDER} / {_provider_model_name()}"
+        if COVER_LETTER_USE_LLM
+        else "Deterministic cover-letter fallback unless explicitly enabled"
+    )
+    return f"Resume generation: {resume_engine}; Cover letter pipeline: {cover_engine}"
+
+
+def reorder_skill_categories(
+    base_resume: Dict[str, Any],
+    jd_keywords: Optional[List[str]] = None,
+    max_per_category: int = 8,
+) -> Dict[str, List[str]]:
+    """Return base-resume skill categories reordered by JD overlap."""
+    raw_skills = base_resume.get("skills", {})
+    if not isinstance(raw_skills, dict):
+        return {"Skills": flatten_base_skills(base_resume)}
+
+    jd_terms = [term.lower() for term in (jd_keywords or [])]
+    categorized = {}
+
+    for category, skills in raw_skills.items():
+        if not isinstance(skills, list):
+            continue
+
+        cleaned_skills = [fix_encoding_issues(str(skill)).strip() for skill in skills if str(skill).strip()]
+
+        def relevance(skill: str) -> tuple[int, int]:
+            skill_lower = skill.lower()
+            exact = any(skill_lower == term for term in jd_terms)
+            partial = any(skill_lower in term or term in skill_lower for term in jd_terms)
+            return (2 if exact else 1 if partial else 0, -cleaned_skills.index(skill))
+
+        ordered = sorted(cleaned_skills, key=relevance, reverse=True)
+        categorized[category.replace("_", " ").title()] = ordered[:max_per_category]
+
+    return categorized
+
+
+def build_markdown_resume(
+    resume_data: ResumeData,
+    base_resume: Dict[str, Any],
+    jd_keywords: Optional[List[str]] = None,
+) -> str:
+    """Build the requested Markdown resume plus generation metadata report."""
+    keywords = jd_keywords or []
+    plain_text = build_plain_text_resume(resume_data).lower()
+    injected_keywords = []
+    jd_blob = " ".join(str(keyword).lower() for keyword in keywords)
+    generic_terms = {
+        "backend",
+        "software",
+        "engineer",
+        "responsibilities",
+        "qualifications",
+        "role",
+        "apis",
+        "rest",
+    }
+    for skill in flatten_base_skills(base_resume):
+        normalized = str(skill).strip()
+        skill_lower = normalized.lower()
+        if (
+            normalized
+            and skill_lower not in generic_terms
+            and skill_lower in plain_text
+            and (skill_lower in jd_blob or any(term in skill_lower for term in jd_blob.split()))
+            and normalized not in injected_keywords
+        ):
+            injected_keywords.append(normalized)
+        if len(injected_keywords) >= 5:
+            break
+    for keyword in keywords:
+        normalized = str(keyword).strip()
+        keyword_lower = normalized.lower()
+        if (
+            normalized
+            and keyword_lower not in generic_terms
+            and len(normalized) > 3
+            and keyword_lower in plain_text
+            and normalized not in injected_keywords
+        ):
+            injected_keywords.append(normalized)
+        if len(injected_keywords) >= 5:
+            break
+
+    skill_categories = reorder_skill_categories(base_resume, keywords)
+    lines = [
+        f"# {resume_data.name}",
+        f"{resume_data.email} | {resume_data.phone}"
+        + (f" | {resume_data.linkedin}" if resume_data.linkedin else "")
+        + (f" | {resume_data.github}" if resume_data.github else ""),
+        "",
+        "## Professional Summary",
+        resume_data.summary,
+        "",
+        "## Technical Skills",
+    ]
+
+    for category, skills in skill_categories.items():
+        if skills:
+            lines.append(f"- **{category}:** {', '.join(skills)}")
+
+    if resume_data.experience:
+        lines.extend(["", "## Professional Experience"])
+        for job in resume_data.experience:
+            lines.append(
+                f"### {job.get('title', '')} | {job.get('company', '')} | {job.get('duration', '')}"
+            )
+            if job.get("location"):
+                lines.append(f"*{job['location']}*")
+            for bullet in job.get("bullets", []):
+                lines.append(f"- {bullet}")
+
+    if resume_data.projects:
+        lines.extend(["", "## Projects"])
+        for project in resume_data.projects:
+            technologies = ", ".join(project.get("technologies", []))
+            lines.append(f"### {project.get('title', '')} | {project.get('date', '')}")
+            if technologies:
+                lines.append(f"*{technologies}*")
+            if project.get("description"):
+                lines.append(project["description"])
+            for bullet in project.get("bullets", []):
+                lines.append(f"- {bullet}")
+
+    if resume_data.education:
+        lines.extend(["", "## Education"])
+        for edu in resume_data.education:
+            lines.append(f"**{edu.get('degree', '')}** | {edu.get('institution', '')} | {edu.get('duration', '')}")
+            education_detail = edu.get("location", "")
+            if edu.get("cgpa"):
+                education_detail = f"{education_detail} | GPA: {edu['cgpa']}" if education_detail else f"GPA: {edu['cgpa']}"
+            if education_detail:
+                lines.append(education_detail)
+
+    if resume_data.certifications:
+        lines.extend(["", "## Certifications"])
+        for cert in resume_data.certifications:
+            lines.append(f"- {cert}")
+
+    if resume_data.achievements:
+        lines.extend(["", "## Achievements"])
+        for achievement in resume_data.achievements:
+            lines.append(f"- {achievement}")
+
+    lines.extend([
+        "",
+        "---",
+        "## Generation Metadata & Keyword Report",
+        f"- **Keywords Injected:** {', '.join(injected_keywords[:5]) if injected_keywords else 'None'}",
+        f"- **LLM Pipeline Verification:** {build_pipeline_verification()}",
+    ])
+
+    return "\n".join(fix_encoding_issues(line).rstrip() for line in lines)
+
+
+def save_markdown_resume(
+    resume_data: ResumeData,
+    base_resume: Dict[str, Any],
+    output_path: str,
+    jd_keywords: Optional[List[str]] = None,
+) -> Path:
+    """Save the Markdown resume requested by the advanced ATS prompt."""
+    markdown_path = Path(output_path).with_suffix(".md")
+    markdown_path.write_text(
+        build_markdown_resume(resume_data, base_resume, jd_keywords),
+        encoding="utf-8",
+    )
+    console.log(f"[green]Markdown resume saved: {markdown_path}[/green]")
+    return markdown_path
+
+
 def count_pdf_pages(pdf_path: str) -> int:
     """Count PDF pages without adding a heavy dependency."""
     content = Path(pdf_path).read_bytes()
     return len(re.findall(rb"/Type\s*/Page\b", content))
 
 
-def compact_for_single_page(resume_data: ResumeData) -> ResumeData:
+async def resume_content_fits(page) -> bool:
+    """Check rendered DOM height because PDF page count can hide clipped content."""
+    metrics = await page.evaluate(
+        """() => {
+            const container = document.querySelector('.container');
+            if (!container) {
+                return { fits: false, scrollHeight: 0, clientHeight: 0 };
+            }
+            return {
+                fits: container.scrollHeight <= container.clientHeight + 2,
+                scrollHeight: container.scrollHeight,
+                clientHeight: container.clientHeight
+            };
+        }"""
+    )
+    if not metrics["fits"]:
+        console.log(
+            "[yellow]✗ Rendered content overflows page "
+            f"({metrics['scrollHeight']}px > {metrics['clientHeight']}px)[/yellow]"
+        )
+    return bool(metrics["fits"])
+
+
+def compact_for_single_page(
+    resume_data: ResumeData,
+    jd_keywords: Optional[List[str]] = None,
+) -> ResumeData:
     """Apply the final strict compression pass if the first PDF exceeds one page."""
-    resume_data.summary = trim_bullet_point(resume_data.summary, max_length=320)
+    resume_data.summary = close_sentence(trim_bullet_point(resume_data.summary, max_length=320))
     resume_data = prioritize_resume_content(
         resume_data,
         max_experience_items=2,
-        max_bullets_per_job=4,
+        max_bullets_per_job=6,
         max_projects=3,
-        max_bullets_per_project=2,
+        max_bullets_per_project=1,
         max_education_items=1,
-        max_certifications=2,
-        max_achievements=2,
+        max_certifications=999,
+        max_achievements=999,
+        jd_keywords=jd_keywords,
     )
-    resume_data.skills = resume_data.skills[:18]
+    resume_data.skills = resume_data.skills[:20]
     return resume_data
 
 
@@ -676,10 +1178,16 @@ def clone_resume_data(resume_data: ResumeData) -> ResumeData:
     return ResumeData(**resume_data.model_dump())
 
 
-def build_density_variant(resume_data: ResumeData, profile: Dict[str, int]) -> ResumeData:
+def build_density_variant(
+    resume_data: ResumeData,
+    profile: Dict[str, int],
+    jd_keywords: Optional[List[str]] = None,
+) -> ResumeData:
     """Build one candidate density profile for strict one-page rendering."""
     variant = clone_resume_data(resume_data)
-    variant.summary = trim_bullet_point(variant.summary, max_length=profile.get("summary_length", 360))
+    variant.summary = close_sentence(
+        trim_bullet_point(variant.summary, max_length=profile.get("summary_length", 360))
+    )
     variant = prioritize_resume_content(
         variant,
         max_experience_items=profile.get("experience_items", 2),
@@ -689,6 +1197,7 @@ def build_density_variant(resume_data: ResumeData, profile: Dict[str, int]) -> R
         max_education_items=1,
         max_certifications=profile.get("certifications", 3),
         max_achievements=profile.get("achievements", 3),
+        jd_keywords=jd_keywords,
     )
     variant.skills = variant.skills[:profile.get("skills", 22)]
     return variant
@@ -697,71 +1206,72 @@ def build_density_variant(resume_data: ResumeData, profile: Dict[str, int]) -> R
 DENSITY_PROFILES = [
     {
         "name": "maximum",
-        "summary_length": 420,
+        "summary_length": 400,
         "experience_items": 2,
         "bullets_per_job": 6,
-        "projects": 4,
-        "bullets_per_project": 4,
+        "projects": 3,
+        "bullets_per_project": 2,
         "skills": 24,
-        "certifications": 4,
-        "achievements": 4,
+        "certifications": 999,
+        "achievements": 999,
     },
     {
         "name": "full",
-        "summary_length": 380,
+        "summary_length": 360,
         "experience_items": 2,
-        "bullets_per_job": 5,
-        "projects": 4,
-        "bullets_per_project": 3,
+        "bullets_per_job": 6,
+        "projects": 3,
+        "bullets_per_project": 2,
         "skills": 22,
-        "certifications": 3,
-        "achievements": 3,
+        "certifications": 999,
+        "achievements": 999,
     },
     {
         "name": "balanced-full",
-        "summary_length": 340,
-        "experience_items": 2,
-        "bullets_per_job": 5,
-        "projects": 4,
-        "bullets_per_project": 2,
-        "skills": 22,
-        "certifications": 3,
-        "achievements": 2,
-    },
-    {
-        "name": "balanced",
         "summary_length": 320,
         "experience_items": 2,
-        "bullets_per_job": 4,
+        "bullets_per_job": 5,
         "projects": 3,
         "bullets_per_project": 2,
         "skills": 20,
-        "certifications": 2,
-        "achievements": 2,
+        "certifications": 999,
+        "achievements": 999,
+    },
+    {
+        "name": "balanced",
+        "summary_length": 280,
+        "experience_items": 2,
+        "bullets_per_job": 5,
+        "projects": 3,
+        "bullets_per_project": 1,
+        "skills": 18,
+        "certifications": 999,
+        "achievements": 999,
     },
     {
         "name": "compact-full",
-        "summary_length": 300,
+        "summary_length": 240,
         "experience_items": 2,
-        "bullets_per_job": 3,
-        "projects": 3,
-        "bullets_per_project": 2,
-        "skills": 18,
-        "certifications": 2,
-        "achievements": 1,
+        "bullets_per_job": 4,
+        "projects": 2,
+        "bullets_per_project": 1,
+        "skills": 16,
+        "certifications": 999,
+        "achievements": 999,
     },
     {
         "name": "emergency",
-        "summary_length": 260,
+        "summary_length": 200,
         "experience_items": 1,
-        "bullets_per_job": 2,
-        "projects": 1,
+        "bullets_per_job": 4,
+        "projects": 2,
         "bullets_per_project": 1,
         "skills": 14,
-        "certifications": 0,
-        "achievements": 0,
+        "certifications": 999,
+        "achievements": 999,
     },
 ]
+
 
 
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -817,11 +1327,12 @@ async def convert_html_to_pdf(
                 path=output_path,
                 format="Letter",
                 margin={
-                    "top": "0.32in",
-                    "bottom": "0.32in",
-                    "left": "0.32in",
-                    "right": "0.32in",
+                    "top": "0",
+                    "bottom": "0",
+                    "left": "0",
+                    "right": "0",
                 },
+                prefer_css_page_size=True,
                 print_background=True,
             )
             
@@ -853,11 +1364,12 @@ async def render_pdf_on_page(page, html_content: str, output_path: str) -> None:
         path=output_path,
         format="Letter",
         margin={
-            "top": "0.32in",
-            "bottom": "0.32in",
-            "left": "0.32in",
-            "right": "0.32in",
+            "top": "0",
+            "bottom": "0",
+            "left": "0",
+            "right": "0",
         },
+        prefer_css_page_size=True,
         print_background=True,
     )
 
@@ -871,6 +1383,8 @@ async def generate_resume_pdf(
     tailored_resume: Optional[TailoredResume] = None,
     output_path: Optional[str] = None,
     company_name: Optional[str] = None,
+    job_description: Optional[str] = None,
+    output_dir: Optional[Path] = None,
 ) -> Path:
     """
     Generate complete resume PDF from tailored content.
@@ -898,17 +1412,21 @@ async def generate_resume_pdf(
         tailored_resume: Tailored resume from LLM (optional)
         output_path: Path to save PDF (optional, auto-generated if not provided)
         company_name: Company name for filename (optional, auto-extracted or uses default)
+        job_description: Raw JD text used for project shuffling and metadata
         
     Returns:
         Path to generated PDF file
     """
     # Generate output path if not provided
+    target_output_dir = Path(output_dir or OUTPUT_DIR)
+    target_output_dir.mkdir(parents=True, exist_ok=True)
+
     if not output_path:
         if not company_name:
             company_name = "default"
         
         filename = create_resume_filename(company_name, "pdf")
-        output_path = str(OUTPUT_DIR / filename)
+        output_path = str(target_output_dir / filename)
     
     console.log("[bold cyan]MODULE 3 â€” Resume PDF Generator (Enhanced)[/bold cyan]")
     console.log(f"[dim]Output: {output_path}[/dim]")
@@ -920,6 +1438,11 @@ async def generate_resume_pdf(
     
     # Merge data with encoding fixes
     resume_data = merge_resume_data(base_resume, user_profile, tailored_resume)
+    jd_keywords = extract_keywords(job_description or "") if job_description else []
+    if tailored_resume:
+        jd_keywords.extend(tailored_resume.keywords_matched or [])
+        jd_keywords.extend(tailored_resume.skills or [])
+    jd_keywords = list(dict.fromkeys(str(keyword) for keyword in jd_keywords if str(keyword).strip()))
     console.log(f"[green]âœ“ Resume data prepared[/green]")
     
     # Convert to PDF
@@ -938,20 +1461,46 @@ async def generate_resume_pdf(
             browser = await playwright_instance.chromium.launch(headless=True)
             page = await browser.new_page(viewport={"width": 1024, "height": 1280})
             try:
+                # REVERSED: Try from most dense to least dense, keep the FULLEST that fits
+                # This ensures maximum content on the page instead of minimum
+                valid_profiles = []
+                
                 for profile in DENSITY_PROFILES:
-                    candidate = build_density_variant(resume_data, profile)
+                    candidate = build_density_variant(resume_data, profile, jd_keywords=jd_keywords)
                     html_content = render_html_resume(candidate)
                     await render_pdf_on_page(page, html_content, output_path)
                     page_count = count_pdf_pages(output_path)
+                    content_fits = await resume_content_fits(page)
 
-                    if page_count == 1:
-                        selected_profile = profile["name"]
-                        selected_html = html_content
-                        selected_resume = candidate
+                    if page_count == 1 and content_fits:
+                        valid_profiles.append((profile, candidate, html_content))
+                        console.log(
+                            f"[green]✓ Density profile '{profile['name']}' fits on 1 page[/green]"
+                        )
                         break
+                    else:
+                        console.log(
+                            f"[yellow]✗ Density profile '{profile['name']}' rendered as {page_count} pages[/yellow]"
+                        )
 
+                # Profiles are ordered from fullest to most compact. Pick the first
+                # fitting profile so a successful maximum render is not overwritten
+                # by the later emergency profile.
+                if valid_profiles:
+                    selected_profile = valid_profiles[0][0]["name"]
+                    selected_resume = valid_profiles[0][1]
+                    selected_html = valid_profiles[0][2]
                     console.log(
-                        f"[yellow]Density profile '{profile['name']}' rendered as {page_count} pages; trying next[/yellow]"
+                        f"[cyan]Selected '{selected_profile}' profile (fullest content that fits)[/cyan]"
+                    )
+                else:
+                    # Fallback: use the most compact profile if nothing fits
+                    candidate = build_density_variant(resume_data, DENSITY_PROFILES[-1], jd_keywords=jd_keywords)
+                    selected_profile = DENSITY_PROFILES[-1]["name"]
+                    selected_resume = candidate
+                    selected_html = render_html_resume(candidate)
+                    console.log(
+                        f"[yellow]Warning: No profile fits exactly 1 page, using fallback '{selected_profile}'[/yellow]"
                     )
             finally:
                 await browser.close()
@@ -960,7 +1509,22 @@ async def generate_resume_pdf(
             raise RuntimeError("Strict one-page check failed: no density profile fit on one page")
 
         resume_data = selected_resume
+        
+        # Re-render and save the final PDF with the selected profile (fullest content)
+        # Need to reopen browser since we closed it in the try block
+        async with async_playwright() as playwright_instance:
+            browser = await playwright_instance.chromium.launch(headless=True)
+            page = await browser.new_page(viewport={"width": 1024, "height": 1280})
+            final_html = render_html_resume(resume_data)
+            await render_pdf_on_page(page, final_html, output_path)
+            if not await resume_content_fits(page):
+                raise RuntimeError(
+                    f"Strict one-page check failed: '{selected_profile}' profile clips content"
+                )
+            await browser.close()
+        
         save_plain_text_resume(resume_data, output_path)
+        save_markdown_resume(resume_data, base_resume, output_path, jd_keywords=jd_keywords)
 
         if DEBUG:
             html_output = Path(output_path).with_suffix(".html")

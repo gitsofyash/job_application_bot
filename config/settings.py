@@ -31,8 +31,8 @@ DATA_DIR.mkdir(exist_ok=True)
 # ═══════════════════════════════════════════════════════════════
 # LLM CONFIGURATION
 # ═══════════════════════════════════════════════════════════════
-LLM_PROVIDER: Literal["OLLAMA", "OPENAI", "ANTHROPIC", "GEMINI", "COHERE"] = os.getenv(
-    "LLM_PROVIDER", "OLLAMA"
+LLM_PROVIDER: Literal["OLLAMA", "OPENAI", "ANTHROPIC", "COHERE"] = os.getenv(
+    "LLM_PROVIDER", "COHERE"
 ).upper()  # type: ignore
 
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
@@ -44,11 +44,8 @@ OPENAI_MODEL = "gpt-4-turbo"
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 ANTHROPIC_MODEL = "claude-opus"
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", os.getenv("GOOGLE_API_KEY", ""))
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-pro")
-
 COHERE_API_KEY = os.getenv("COHERE_API_KEY", "")
-COHERE_MODEL = os.getenv("COHERE_MODEL", "command-r-plus")
+COHERE_MODEL = "command-r"
 
 # Token guard: max words to process before summarization
 JD_MAX_WORDS = 1000
@@ -179,10 +176,11 @@ ATS_SELECTORS = {
 # RESUME GENERATION SETTINGS
 # ═══════════════════════════════════════════════════════════════
 # Strict 1-page enforcement with optimized content distribution
-MAX_RESUME_LINES = 58  # More realistic for 1-page resume at 10-11pt font
-MIN_FONT_SIZE = 9  # Don't go below this for readability
-INITIAL_FONT_SIZE = 10.5  # Better balance for ATS and visual appeal
-CONTENT_CUTOFF_THRESHOLD = 0.93  # Fill closer to max capacity (93% of page)
+MAX_RESUME_LINES = 52  # Realistic for 8-9pt font on 1-page with 0.3in margins
+MIN_FONT_SIZE = 8  # Absolute minimum for readability
+INITIAL_FONT_SIZE = 8.6  # Optimal balance for ATS and readability at 1-page
+CONTENT_CUTOFF_THRESHOLD = 0.95  # Fill closer to max capacity (95% of page)
+
 
 # ═══════════════════════════════════════════════════════════════
 # FILE PATHS

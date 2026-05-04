@@ -28,7 +28,9 @@ MITIGATION:
 import asyncio
 import json
 import re
-from typing import Optional, List
+import traceback
+import os
+from typing import Optional, List, Any
 from enum import Enum
 
 from pydantic import BaseModel, Field, field_validator
@@ -50,8 +52,6 @@ from config.settings import (
     OPENAI_MODEL,
     ANTHROPIC_API_KEY,
     ANTHROPIC_MODEL,
-    GEMINI_API_KEY,
-    GEMINI_MODEL,
     COHERE_API_KEY,
     COHERE_MODEL,
     JD_MAX_WORDS,
@@ -146,8 +146,8 @@ def get_llm_chain():
       - OLLAMA (local, default)
       - OPENAI (gpt-4-turbo)
       - ANTHROPIC (claude-opus)
-      - GEMINI (gemini-1.5-pro)
-      - COHERE (command-r-plus)
+      - GEMINI (gemini-1.5-flash)
+      - COHERE (command-r)
     
     ⚠️ FAILURE POINT: Provider not available → raises ImportError or connection error.
     MITIGATION: Caller can catch and retry with fallback provider.
@@ -192,35 +192,33 @@ def get_llm_chain():
                 model=ANTHROPIC_MODEL,
                 temperature=0.3,
             )
-        
+            
         elif LLM_PROVIDER == "GEMINI":
             from langchain_google_genai import ChatGoogleGenerativeAI
-
-            if not GEMINI_API_KEY:
-                raise ValueError("GEMINI_API_KEY or GOOGLE_API_KEY not set in .env")
-
-            console.log(f"[cyan]Initializing Gemini: {GEMINI_MODEL}[/cyan]")
+            import os
+            
+            # Force read from env to bypass config.py caching
+            api_key = os.getenv("GOOGLE_API_KEY")
+            if not api_key:
+                raise ValueError("GOOGLE_API_KEY not set in .env or system environment variables")
+            
+            # HARDCODED MODEL STRING to kill the 404 NOT_FOUND error
+            target_gemini_model = "gemini-3-flash-preview"
+            
+            console.log(f"[cyan]Initializing Gemini ({target_gemini_model}) for Tailoring[/cyan]")
             return ChatGoogleGenerativeAI(
-                google_api_key=GEMINI_API_KEY,
-                model=GEMINI_MODEL,
+                google_api_key=api_key,
+                model=target_gemini_model, 
                 temperature=0.3,
-                timeout=RESUME_TAILOR_LLM_TIMEOUT_SECONDS,
-                max_retries=1,
+                # THIS IS THE MAGIC LINE: Forces strict JSON output
+                # model_kwargs={"response_mime_type": "application/json"}
             )
         
         elif LLM_PROVIDER == "COHERE":
-            from langchain_cohere import ChatCohere
-
             if not COHERE_API_KEY:
                 raise ValueError("COHERE_API_KEY not set in .env")
 
-            console.log(f"[cyan]Initializing Cohere: {COHERE_MODEL}[/cyan]")
-            return ChatCohere(
-                cohere_api_key=COHERE_API_KEY,
-                model=COHERE_MODEL,
-                temperature=0.3,
-                max_retries=1,
-            )
+            return None
         
         else:
             raise ValueError(f"Unknown LLM_PROVIDER: {LLM_PROVIDER}")
@@ -228,8 +226,92 @@ def get_llm_chain():
     except ImportError as e:
         raise ImportError(
             f"LLM provider {LLM_PROVIDER} not installed. "
-            f"Install with: pip install langchain-{LLM_PROVIDER.lower()}"
+            f"Install the matching LangChain integration or use COHERE."
         ) from e
+
+
+def _cohere_response_text(response: Any) -> str:
+    """Extract text from a Cohere v2 chat response."""
+    content = getattr(getattr(response, "message", None), "content", None) or []
+    if content:
+        return "".join(getattr(item, "text", "") for item in content).strip()
+    return str(response)
+
+
+def summarize_jd_with_cohere(jd_text: str) -> str:
+    """Use Cohere specifically to extract and summarize the JD."""
+    import os
+    
+    # Force read from env to bypass config.py caching
+    cohere_key = os.getenv("COHERE_API_KEY") or COHERE_API_KEY 
+    
+    if not cohere_key:
+        raise ValueError("COHERE_API_KEY not set in .env")
+    
+    try:
+        import cohere
+    except ImportError as e:
+        raise ImportError("Cohere SDK not installed. Install with: pip install cohere") from e
+
+    # HARDCODED MODEL STRING to kill the 'command-r' ghost variable
+    target_model = "command-a-03-2025"
+    console.log(f"[cyan]Using Cohere ({target_model}) for JD Summarization[/cyan]")
+    
+    client = cohere.ClientV2(api_key=cohere_key)
+    
+    prompt = f"""You are an expert technical recruiter. Extract ONLY the hard technical requirements, programming languages, and core responsibilities from this job description. Do not write paragraphs. Extract a dense, comma-separated list of skills and duties.
+
+    Raw Job Description:
+    {jd_text}
+    """
+    
+    response = client.chat(
+        model=target_model,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.1
+    )
+    return _cohere_response_text(response)
+
+
+def invoke_cohere_json(prompt_text: str, max_tokens: int = 1800) -> str:
+    """Call Cohere directly using the official SDK and request JSON output."""
+    if not COHERE_API_KEY:
+        raise ValueError("COHERE_API_KEY not set in .env")
+
+    try:
+        import cohere
+    except ImportError as e:
+        raise ImportError("Cohere SDK not installed. Install with: pip install cohere") from e
+
+    console.log(f"[cyan]Initializing Cohere SDK: {COHERE_MODEL}[/cyan]")
+    client = cohere.ClientV2(api_key=COHERE_API_KEY)
+    response = client.chat(
+        model=COHERE_MODEL,
+        messages=[
+            {
+                "role": "system",
+                "content": "Return only valid JSON. Do not include Markdown fences.",
+            },
+            {"role": "user", "content": prompt_text},
+        ],
+        response_format={"type": "json_object"},
+        temperature=0.25,
+        max_tokens=max_tokens,
+    )
+    return _cohere_response_text(response)
+
+
+def stringify_prompt_value(value: Any) -> str:
+    """Normalize prompt variables so lists/dicts never reach regex/string APIs."""
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (list, tuple, set)):
+        return ", ".join(stringify_prompt_value(item) for item in value if item is not None)
+    if isinstance(value, dict):
+        return json.dumps(value, ensure_ascii=False)
+    return str(value)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -479,6 +561,10 @@ ATS_KEYWORD_SKILL_MAP = {
     "security": ["JWT Authentication", "AWS IAM"],
     "authentication": ["JWT Authentication"],
     "authorization": ["JWT Authentication", "AWS IAM"],
+    "api design": ["API Design", "REST APIs"],
+    "bash": ["Bash"],
+    "cloud cost optimization": ["Cloud Cost Optimization"],
+    "debugging": ["Debugging Tools"],
     "ci/cd": ["CI/CD"],
     "unit testing": ["TDD", "Unit Testing (Unity/C)"],
     "algorithms": ["Algorithms", "Data Structures"],
@@ -503,6 +589,7 @@ ATS_KEYWORD_SKILL_MAP = {
 ATS_KEYWORD_PHRASES = {
     "analytical": "analytical problem-solving",
     "communication": "cross-functional team communication and collaboration",
+    "collaboration": "cross-functional team communication and collaboration",
     "logging": "structured logging and centralized logging",
     "monitoring": "production monitoring and observability",
     "scalability": "system scalability and performance optimization",
@@ -587,7 +674,7 @@ def improve_tailored_resume_for_ats(
             )
             updated.summary = f"{updated.summary.rstrip()} {ats_sentence}"
 
-    updated.skills = existing_skills[:18]
+    updated.skills = existing_skills[:24]
     updated.keywords_missing = [
         keyword for keyword in updated.keywords_missing if keyword not in added
     ]
@@ -660,9 +747,19 @@ async def tailor_resume(
     console.log(f"[green]Matched {len(matched_skills)} verified skills[/green]")
     console.log(f"[yellow]{len(missing_keywords)} keywords not in Yash's skills[/yellow]")
     
-    # Compact JD without a slow extra LLM summarization call.
-    llm = get_llm_chain()
-    jd_for_processing = compact_jd_for_tailoring(job_description)
+    # --- MULTI-MODEL PIPELINE UPDATE ---
+    # 1. Pipeline Step 1: Use Cohere to extract and summarize the JD
+    try:
+        console.log("[blue]Processing JD with Cohere...[/blue]")
+        jd_summary = await asyncio.to_thread(summarize_jd_with_cohere, job_description)
+        jd_for_processing = stringify_prompt_value(jd_summary)
+    except Exception as e:
+        console.log(f"[yellow]Cohere JD summarization failed ({e}), falling back to heuristic compaction...[/yellow]")
+        jd_for_processing = stringify_prompt_value(compact_jd_for_tailoring(job_description))
+    
+    # 2. Pipeline Step 2: Initialize main LLM (e.g., Gemini) for the CV Tailoring
+    llm = None if LLM_PROVIDER == "COHERE" else get_llm_chain()
+    # -----------------------------------
     
     # Build experience items
     base_experience = base_resume.get("experience", [])
@@ -702,14 +799,15 @@ JOB DESCRIPTION:
 
 Task:
 1. Write a concise 2 sentence professional summary tailored to this JD, highlighting keywords from the job description that match Yash's verified skills.
-2. Rewrite each experience bullet to emphasize skills and achievements relevant to the JD. Keep each tailored bullet under 120 characters where possible and preserve truthful metrics.
-3. Select 10-14 verified skills most relevant to this role, prioritizing exact JD matches.
+2. Rewrite each work experience bullet to emphasize JD-relevant keywords while preserving original truth and metrics. Do not delete work experience records.
+3. Select 10-16 verified skills most relevant to this role, prioritizing exact JD matches and avoiding keyword stuffing.
 4. Identify JD keywords that match Yash's verified skills (keywords_matched).
 5. Identify JD requirements that Yash does NOT have (keywords_missing) — be honest about gaps.
 
 IMPORTANT:
 - ONLY use skills from VERIFIED_SKILLS list
 - Do NOT invent tools or technologies Yash doesn't have
+- The generator will keep every certification and achievement from BASE_RESUME and exactly 3 JD-relevant projects.
 - keywords_missing should be HONEST gaps, not empty
 
 {format_instructions}
@@ -722,44 +820,80 @@ Output JSON:""",
     )
     
     # Prepare variables
-    base_summary = base_resume.get("summary", "")
-    experience_bullets = "\n".join([f"- {b['original']}" for b in experience_items])
+    base_summary = stringify_prompt_value(base_resume.get("summary", ""))
+    experience_bullets = "\n".join(
+        f"- {stringify_prompt_value(b['original'])}" for b in experience_items
+    )
+    prompt_payload = {
+        "jd_text": jd_for_processing,
+        "base_summary": base_summary,
+        "experience_bullets": experience_bullets,
+    }
     
     # Invoke LLM
     console.log("[blue]Invoking LLM for tailoring...[/blue]")
-    chain = prompt | llm
-    
-    response = await asyncio.wait_for(
-        asyncio.to_thread(
-            chain.invoke,
-            {
-                "jd_text": jd_for_processing,
-                "base_summary": base_summary,
-                "experience_bullets": experience_bullets,
-            },
-        ),
-        timeout=RESUME_TAILOR_LLM_TIMEOUT_SECONDS,
-    )
-    
-    # Extract content if response is a message object
-    if hasattr(response, "content"):
-        response_text = response.content
-    else:
-        response_text = str(response)
+    try:
+        if LLM_PROVIDER == "COHERE":
+            prompt_text = prompt.format(**prompt_payload)
+            response_text = await asyncio.wait_for(
+                asyncio.to_thread(invoke_cohere_json, prompt_text),
+                timeout=RESUME_TAILOR_LLM_TIMEOUT_SECONDS,
+            )
+        else:
+            chain = prompt | llm
+            response = await asyncio.wait_for(
+                asyncio.to_thread(chain.invoke, prompt_payload),
+                timeout=RESUME_TAILOR_LLM_TIMEOUT_SECONDS,
+            )
+            
+            # Extract content if response is a message object
+            if hasattr(response, "content"):
+                # FIX: Handle Gemini's specific list-of-dicts format
+                if isinstance(response.content, list) and len(response.content) > 0 and isinstance(response.content[0], dict):
+                    response_text = str(response.content[0].get("text", ""))
+                else:
+                    response_text = stringify_prompt_value(response.content)
+            else:
+                response_text = stringify_prompt_value(response)
+    except Exception as e:
+        console.print("\n" + "="*50, style="red bold")
+        console.print("🚨 FATAL MODULE 2 API ERROR 🚨", style="red bold")
+        console.print(f"Error Message: {str(e)}", style="red")
+        console.print("Traceback:", style="red")
+        traceback.print_exc()
+        console.print("="*50 + "\n", style="red bold")
+        raise ValueError(f"LLM Invocation Failed: {str(e)}") from e
     
     if DEBUG:
         console.log(f"[dim]LLM Response (raw):\n{response_text}[/dim]")
     
     # Parse JSON output
     try:
-        # Try to extract JSON from response
-        json_match = re.search(r"\{.*\}", response_text, re.DOTALL)
-        if json_match:
-            json_str = json_match.group(0)
-            output_dict = json.loads(json_str)
-        else:
-            output_dict = json.loads(response_text)
-    except json.JSONDecodeError as e:
+        # Strip markdown code blocks if Gemini added them
+        clean_text = response_text.strip()
+        if clean_text.startswith("```json"):
+            clean_text = clean_text[7:]
+        if clean_text.startswith("```"):
+            clean_text = clean_text[3:]
+        if clean_text.endswith("```"):
+            clean_text = clean_text[:-3]
+            
+        clean_text = clean_text.strip()
+        
+        # Try to parse the cleaned text directly first
+        try:
+            output_dict = json.loads(clean_text)
+        except json.JSONDecodeError:
+            # Fallback: aggressively search for the first { and last }
+            start_idx = clean_text.find('{')
+            end_idx = clean_text.rfind('}')
+            if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+                json_str = clean_text[start_idx:end_idx + 1]
+                output_dict = json.loads(json_str)
+            else:
+                raise ValueError("No JSON object found in response")
+                
+    except Exception as e:
         console.log(f"[red]Failed to parse LLM JSON output: {e}[/red]")
         if DEBUG:
             console.log(f"[dim]Response was:\n{response_text}[/dim]")

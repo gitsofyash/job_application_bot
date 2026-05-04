@@ -5,83 +5,115 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ name }} - Cover Letter</title>
     <style>
-        /* ATS-FRIENDLY COVER LETTER STYLING
-         * Optimized for Applicant Tracking Systems
-         * - No colors, images, or complex styling
-         * - Simple fonts that all systems support
-         * - Readable by text parsers
-         * - Standard HTML structure
+        /* STRICT ONE-PAGE COVER LETTER TEMPLATE
+         * ATS-friendly with guaranteed single page output
+         * Simple formatting for maximum compatibility
          */
+        
+        @page {
+            size: Letter;
+            margin: 0.75in;
+        }
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
         
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        
         body {
-            font-family: Arial, Calibri, Helvetica, sans-serif;
+            font-family: Calibri, Arial, Helvetica, sans-serif;
             font-size: 11pt;
-            line-height: 1.6;
+            line-height: 1.5;
             color: #000;
             background: #fff;
-            padding: 20px;
+            margin: 0;
+            padding: 0;
         }
         
         .container {
-            max-width: 8.5in;
+            width: 7in;
+            max-height: 10in;
             margin: 0 auto;
-            padding: 0.5in;
+            padding: 0.75in;
+            overflow: hidden;
         }
         
         /* DATE */
         .date {
             text-align: right;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             font-size: 11pt;
+            line-height: 1.4;
         }
         
         /* PARAGRAPHS */
         p {
-            margin: 12px 0;
-            text-align: justify;
-            line-height: 1.6;
+            margin: 10px 0;
+            text-align: left;
+            line-height: 1.5;
             font-size: 11pt;
         }
         
         /* GREETING */
         .greeting {
-            margin-bottom: 12px;
+            margin-bottom: 10px;
+            line-height: 1.4;
         }
         
         /* OPENING PARAGRAPH */
         .opening {
-            margin-bottom: 12px;
+            margin-bottom: 10px;
+            line-height: 1.5;
         }
         
         /* BODY PARAGRAPHS */
         .body {
-            margin-bottom: 12px;
+            margin-bottom: 10px;
+            line-height: 1.5;
         }
         
         /* CLOSING PARAGRAPH */
         .closing-paragraph {
-            margin-bottom: 12px;
+            margin-bottom: 10px;
+            line-height: 1.5;
         }
         
         /* SIGNATURE */
         .signature {
-            margin-top: 20px;
+            margin-top: 15px;
             font-size: 11pt;
+            line-height: 1.4;
         }
-        
-        /* PAGE BREAK */
+
         @media print {
             body {
                 padding: 0;
+                margin: 0;
             }
             
             .container {
-                padding: 0.5in;
+                padding: 0.75in;
+                max-height: 10in;
+                overflow: hidden;
+                page-break-after: avoid;
+            }
+
+            p {
+                page-break-inside: avoid;
+            }
+        }
+
+        @media screen {
+            .container {
+                box-shadow: 0 0 10px rgba(0,0,0,0.1);
             }
         }
     </style>

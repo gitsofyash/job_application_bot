@@ -4,7 +4,8 @@ MODULE 5 — ATS-Friendly Cover Letter Generator
 Generates tailored cover letter based on job description using LLM.
 
 Features:
-  - LangChain integration with swappable LLM backend (Ollama, OpenAI, Anthropic)
+  - LangChain integration with swappable LLM backend (Ollama, OpenAI, Anthropic, Gemini)
+  - Multi-model architecture: Cohere for JD extraction, primary LLM for drafting
   - Professional cover letter structure
   - Keyword matching from job description
   - Company research highlights
@@ -34,6 +35,7 @@ import html
 import json
 import re
 import urllib.request
+import os
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from pathlib import Path
@@ -58,8 +60,8 @@ from config.settings import (
     OPENAI_MODEL,
     ANTHROPIC_API_KEY,
     ANTHROPIC_MODEL,
-    GEMINI_API_KEY,
-    GEMINI_MODEL,
+    COHERE_API_KEY,
+    COHERE_MODEL,
     JD_MAX_WORDS,
     COVER_LETTER_MAX_CHARS,
     COVER_LETTER_LLM_TIMEOUT_SECONDS,
@@ -70,7 +72,7 @@ from config.settings import (
     DEBUG,
 )
 from utils.url_parser import fix_encoding_issues, create_cover_letter_filename
-from modules.m2_tailor import extract_keywords, match_skills_to_verified
+from modules.m2_tailor import extract_keywords, match_skills_to_verified, invoke_cohere_json, summarize_jd_with_cohere
 
 console = Console()
 
@@ -345,6 +347,7 @@ def get_llm_chain():
       - OLLAMA (local, default)
       - OPENAI (gpt-4-turbo)
       - ANTHROPIC (claude-opus)
+      - GEMINI (gemini-1.5-flash)
     
     Returns:
         LangChain LLM instance
@@ -386,21 +389,31 @@ def get_llm_chain():
                 model=ANTHROPIC_MODEL,
                 temperature=0.4,
             )
-        
+            
         elif LLM_PROVIDER == "GEMINI":
             from langchain_google_genai import ChatGoogleGenerativeAI
-
-            if not GEMINI_API_KEY:
-                raise ValueError("GEMINI_API_KEY or GOOGLE_API_KEY not set in .env")
-
-            console.log(f"[cyan]Initializing Gemini: {GEMINI_MODEL}[/cyan]")
+            import os
+            
+            # Force read from env to bypass config.py caching
+            api_key = os.getenv("GOOGLE_API_KEY")
+            if not api_key:
+                raise ValueError("GOOGLE_API_KEY not set in .env or system environment variables")
+            
+            # HARDCODED MODEL STRING to kill the 404 NOT_FOUND error
+            target_gemini_model = "gemini-3-flash-preview"
+            
+            console.log(f"[cyan]Initializing Gemini ({target_gemini_model}) for Tailoring[/cyan]")
             return ChatGoogleGenerativeAI(
-                google_api_key=GEMINI_API_KEY,
-                model=GEMINI_MODEL,
-                temperature=0.25,
-                timeout=COVER_LETTER_LLM_TIMEOUT_SECONDS,
-                max_retries=1,
+                google_api_key=api_key,
+                model=target_gemini_model, 
+                temperature=0.3,
             )
+        
+        elif LLM_PROVIDER == "COHERE":
+            if not COHERE_API_KEY:
+                raise ValueError("COHERE_API_KEY not set in .env")
+            console.log(f"[cyan]Using Cohere SDK: {COHERE_MODEL}[/cyan]")
+            return None
         
         else:
             raise ValueError(f"Unknown LLM_PROVIDER: {LLM_PROVIDER}")
@@ -506,8 +519,8 @@ async def generate_cover_letter(job_description: str, resume_data: Optional[Dict
     
     Process:
       1. Load user profile and resume data
-      2. Extract key requirements from JD
-      3. Use LLM to generate personalized cover letter with resume context
+      2. Extract key requirements from JD using Cohere
+      3. Use primary LLM to generate personalized cover letter with resume context
       4. Validate output structure
       5. Return CoverLetter object
     
@@ -530,10 +543,18 @@ async def generate_cover_letter(job_description: str, resume_data: Optional[Dict
         resume_data = load_resume_data()
     
     resume_context = compact_resume_context(resume_data) if resume_data else ""
-    job_description = compact_text_by_sections(
-        job_description,
-        max_words=COVER_LETTER_LLM_MAX_WORDS,
-    )
+    
+    # MULTI-MODEL: Summarize JD with Cohere first
+    try:
+        console.log("[blue]Processing JD with Cohere...[/blue]")
+        jd_summary = await asyncio.to_thread(summarize_jd_with_cohere, job_description)
+        job_description = jd_summary
+    except Exception as e:
+        console.log(f"[yellow]Cohere JD summarization failed ({e}), falling back to heuristic compaction...[/yellow]")
+        job_description = compact_text_by_sections(
+            job_description,
+            max_words=COVER_LETTER_LLM_MAX_WORDS,
+        )
 
     parser = PydanticOutputParser(pydantic_object=CoverLetter)
 
@@ -609,6 +630,20 @@ JSON only:""",
     try:
         if LLM_PROVIDER == "OLLAMA":
             cover_letter = await generate_cover_letter_with_ollama(prompt)
+        elif LLM_PROVIDER == "COHERE":
+            response_text = await asyncio.wait_for(
+                asyncio.to_thread(
+                    invoke_cohere_json,
+                    prompt,
+                    COVER_LETTER_LLM_MAX_TOKENS,
+                ),
+                timeout=COVER_LETTER_LLM_TIMEOUT_SECONDS,
+            )
+            try:
+                parsed = json.loads(response_text)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Cohere returned invalid JSON: {e}") from e
+            cover_letter = CoverLetter(**parsed)
         else:
             llm = get_llm_chain()
             chain = llm | parser
@@ -804,6 +839,7 @@ async def save_cover_letter(
     cover_letter: CoverLetter,
     output_filename: Optional[str] = None,
     company_name: Optional[str] = None,
+    output_dir: Optional[Path] = None,
 ) -> Path:
     """
     Save cover letter to text and HTML files with company-based naming.
@@ -830,7 +866,7 @@ async def save_cover_letter(
             timestamp = int(asyncio.get_event_loop().time())
             output_filename = f"cover_letter_{timestamp}"
     
-    output_dir = Path(OUTPUT_DIR)
+    output_dir = Path(output_dir or OUTPUT_DIR)
     output_dir.mkdir(parents=True, exist_ok=True)
     
     # Save as text

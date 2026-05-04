@@ -1,0 +1,94 @@
+# ════════════════════════════════════════════════════════════════
+# GIT ATTRIBUTES - CONSISTENT LINE ENDINGS & HANDLING
+# ════════════════════════════════════════════════════════════════
+
+# Auto detect text files and normalize line endings to LF
+* text=auto
+
+# ════════════════════════════════════════════════════════════════
+# TEXT FILES - LF Line Endings
+# ════════════════════════════════════════════════════════════════
+
+# Python
+*.py text eol=lf
+*.pyx text eol=lf
+*.pxd text eol=lf
+*.pxi text eol=lf
+
+# Shell
+*.sh text eol=lf
+*.bash text eol=lf
+
+# Markdown & Documentation
+*.md text eol=lf
+*.markdown text eol=lf
+*.txt text eol=lf
+*.rst text eol=lf
+
+# JSON, YAML, TOML
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.toml text eol=lf
+
+# Config
+*.ini text eol=lf
+*.cfg text eol=lf
+.gitignore text eol=lf
+.gitattributes text eol=lf
+.env.example text eol=lf
+
+# HTML, CSS, JavaScript
+*.html text eol=lf
+*.css text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+
+# SQL
+*.sql text eol=lf
+
+# ════════════════════════════════════════════════════════════════
+# BINARY FILES - DO NOT MODIFY
+# ════════════════════════════════════════════════════════════════
+
+# Images
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.mov binary
+*.mp4 binary
+
+# Archives
+*.zip binary
+*.7z binary
+*.gz binary
+*.rar binary
+*.tar binary
+
+# Executables
+*.exe binary
+*.dll binary
+*.so binary
+
+# PDF
+*.pdf binary
+
+# ════════════════════════════════════════════════════════════════
+# DIFF ATTRIBUTES
+# ════════════════════════════════════════════════════════════════
+
+# Python diff
+*.py diff=python
+
+# JSON diff
+*.json diff=json
+
+# ════════════════════════════════════════════════════════════════
+# MERGE STRATEGIES
+# ════════════════════════════════════════════════════════════════
+
+# Prefer union merge for requirements files
+requirements.txt merge=union
+Pipfile merge=union

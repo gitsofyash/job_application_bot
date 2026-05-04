@@ -1,8 +1,205 @@
-/__pycache__
-config/__pycache__
-extra/cache
-extra/sample_output
-.env
-.env.example
+# ════════════════════════════════════════════════════════════════
+# PYTHON & VIRTUAL ENVIRONMENTS
+# ════════════════════════════════════════════════════════════════
 
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+.env.venv
+
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Poetry/pipenv
+poetry.lock
+Pipfile.lock
+
+# ════════════════════════════════════════════════════════════════
+# IDE & EDITOR
+# ════════════════════════════════════════════════════════════════
+
+# VS Code
+.vscode/
+.vscode-server/
+*.code-workspace
+launch.json
+settings.json
+
+# PyCharm / JetBrains
+.idea/
+*.iml
+*.iws
+*.ipr
+.DS_Store
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim/Neovim
+.vim/
+*.swp
+*.swo
+*~
+.netrwhist
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# ════════════════════════════════════════════════════════════════
+# ENVIRONMENT & CONFIGURATION
+# ════════════════════════════════════════════════════════════════
+
+# Environment variables (NEVER commit secrets!)
+.env
+.env.local
+.env.*.local
+.env.production
+
+# Keep example template (without secrets)
+!.env.example
+
+# ════════════════════════════════════════════════════════════════
+# APPLICATION OUTPUT & DATA
+# ════════════════════════════════════════════════════════════════
+
+# Generated resumes and cover letters
 output/
+*.pdf
+*.html
+*.txt
+*.md
+
+# Don't exclude documentation in root (keep important docs)
+!extra/docs/*.md
+
+# Temporary files and cache
+extra/cache/
+extra/sample_output/
+*.tmp
+*.temp
+.cache/
+
+# ════════════════════════════════════════════════════════════════
+# OS-SPECIFIC FILES
+# ════════════════════════════════════════════════════════════════
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+.TemporaryItems
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+.directory
+
+# ════════════════════════════════════════════════════════════════
+# TESTING & COVERAGE
+# ════════════════════════════════════════════════════════════════
+
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.hypothesis/
+*.cover
+
+# ════════════════════════════════════════════════════════════════
+# LOGS & DEBUG
+# ════════════════════════════════════════════════════════════════
+
+*.log
+logs/
+debug.log
+.debug
+*.pdb
+
+# ════════════════════════════════════════════════════════════════
+# DATABASES
+# ════════════════════════════════════════════════════════════════
+
+*.db
+*.sqlite
+*.sqlite3
+*.sql
+
+# ════════════════════════════════════════════════════════════════
+# THIRD-PARTY & DEPENDENCY FILES
+# ════════════════════════════════════════════════════════════════
+
+# Don't commit lock files (use requirements.txt instead)
+Pipfile.lock
+poetry.lock
+
+# ════════════════════════════════════════════════════════════════
+# MISC
+# ════════════════════════════════════════════════════════════════
+
+# macOS Finder
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Project-specific
+*.bak
+*.backup
+*.old
+*~
+.swp
+
+# Node modules (if any frontend tools used)
+node_modules/
+npm-debug.log
+
+# ════════════════════════════════════════════════════════════════
+# IMPORTANT: FILES TO KEEP
+# ════════════════════════════════════════════════════════════════
+
+# Keep these even if they match above patterns
+!.gitignore
+!.gitattributes
+!.env.example
+!extra/docs/*.md
+!README.md
+!requirements.txt
+!main.py
+!config/
+!modules/
+!templates/
+!utils/
+!data/

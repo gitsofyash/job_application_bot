@@ -555,6 +555,11 @@ async def extract_job_description(job_url: str) -> ExtractionResult:
             word_count = len(raw_text.split())
             console.log(f"[green]✓ Extracted {word_count} words[/green]")
             
+            if not screenshot_path:
+                screenshot_path = str(OUTPUT_DIR / f"jd_{int(time.time())}.png")
+                await page.screenshot(path=screenshot_path, full_page=True)
+                console.log(f"[green]JD screenshot saved: {screenshot_path}[/green]")
+
             await context.close()
             
             # Build result
