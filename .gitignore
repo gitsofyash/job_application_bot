@@ -91,6 +91,7 @@ settings.json
 
 # Generated resumes and cover letters
 output/
+generated_projects/
 *.pdf
 *.html
 *.txt

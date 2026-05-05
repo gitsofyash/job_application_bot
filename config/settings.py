@@ -31,7 +31,7 @@ DATA_DIR.mkdir(exist_ok=True)
 # ═══════════════════════════════════════════════════════════════
 # LLM CONFIGURATION
 # ═══════════════════════════════════════════════════════════════
-LLM_PROVIDER: Literal["OLLAMA", "OPENAI", "ANTHROPIC", "COHERE", "GEMINI"] = os.getenv(
+LLM_PROVIDER: Literal["COHERE"] = os.getenv(
     "LLM_PROVIDER", "COHERE"
 ).upper()  # type: ignore
 
@@ -45,7 +45,13 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 ANTHROPIC_MODEL = "claude-opus"
 
 COHERE_API_KEY = os.getenv("COHERE_API_KEY", "")
-COHERE_MODEL = "command-r"
+COHERE_MODEL = "command-a-03-2025"
+
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+ENABLE_GEMINI_POLISH = os.getenv("ENABLE_GEMINI_POLISH", "false").lower() == "true"
+GEMINI_POLISH_MIN_SCORE = float(os.getenv("GEMINI_POLISH_MIN_SCORE", "90"))
+GEMINI_POLISH_TIMEOUT_SECONDS = int(os.getenv("GEMINI_POLISH_TIMEOUT_SECONDS", "25"))
 
 # Token guard: max words to process before summarization
 JD_MAX_WORDS = 1000

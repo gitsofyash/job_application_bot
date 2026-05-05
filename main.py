@@ -47,6 +47,8 @@ from config.settings import (
     BASE_RESUME_PATH,
     RESUME_TAILOR_USE_LLM,
     COVER_LETTER_USE_LLM,
+    ENABLE_GEMINI_POLISH,
+    GEMINI_POLISH_MIN_SCORE,
 )
 
 from modules.m1_extractor import (
@@ -62,12 +64,17 @@ from modules.m2_tailor import (
     build_rule_based_tailored_resume,
     improve_tailored_resume_for_ats,
 )
+from modules.m2_5_gap_filler import generate_gap_project
 from modules.m3_generator import generate_resume_pdf
 from modules.m5_coverletter import (
     generate_cover_letter,
     save_cover_letter,
     build_rule_based_cover_letter,
     is_local_ollama_available,
+)
+from modules.m6_gemini_polish import (
+    polish_cover_letter_with_gemini,
+    polish_resume_with_gemini,
 )
 from utils.ats_scorer import ATSScorer
 from utils.url_parser import extract_company_name, fix_encoding_issues, sanitize_filename
@@ -417,6 +424,49 @@ async def orchestrate_application(
                 result.tailoring = build_rule_based_tailored_resume(extraction.raw_text)
         
         # ═══════════════════════════════════════════════════════════════
+        resume_data_dict = None
+        if result.tailoring and result.tailoring.keywords_missing:
+            console.print("[bold cyan]MODULE 2.5: Gap-Bridging Project[/bold cyan]\n")
+            try:
+                gap_project = await generate_gap_project(result.tailoring.keywords_missing)
+                if gap_project:
+                    technologies = [
+                        str(tech).strip()
+                        for tech in gap_project.get("technologies", [])
+                        if str(tech).strip()
+                    ]
+                    existing_skills = list(result.tailoring.skills or [])
+                    for technology in technologies:
+                        if technology not in existing_skills:
+                            existing_skills.append(technology)
+                    result.tailoring.skills = existing_skills
+                    result.tailoring.keywords_missing = []
+
+                    with open(BASE_RESUME_PATH, "r", encoding="utf-8") as f:
+                        resume_data_dict = json.load(f)
+
+                    project_title = str(gap_project.get("title", "Gap Bridging Project")).strip()
+                    if "(Independent Learning)" not in project_title:
+                        project_title = f"{project_title} (Independent Learning)"
+                    resume_project = {
+                        "title": project_title,
+                        "date": "Independent Learning",
+                        "description": str(gap_project.get("description", "")),
+                        "technologies": technologies,
+                        "bullets": [str(gap_project.get("description", ""))],
+                    }
+                    resume_data_dict.setdefault("projects", [])
+                    resume_data_dict["projects"].insert(0, resume_project)
+                    base_resume_data = resume_data_dict
+
+                    console.print(f"[green]Gap project added:[/green] {project_title}")
+                    if gap_project.get("project_path"):
+                        console.print(f"[dim]Code: {gap_project['project_path']}[/dim]\n")
+            except Exception as e:
+                console.print(
+                    f"[yellow]Module 2.5 warning: {escape(str(e))}. Continuing without gap project.[/yellow]\n"
+                )
+
         # MODULE 3: GENERATE RESUME PDF
         # ═══════════════════════════════════════════════════════════════
         
@@ -438,6 +488,7 @@ async def orchestrate_application(
                 company_name=company_name,
                 job_description=extraction.raw_text,
                 output_dir=output_dir,
+                base_resume_data=resume_data_dict,
             )
             result.resume_path = str(resume_path)
             markdown_resume_path = Path(resume_path).with_suffix(".md")
@@ -460,6 +511,46 @@ async def orchestrate_application(
                 result.ats_score = round(score, 2)
                 score_color = "green" if result.ats_score >= 90 else "yellow"
                 console.print(f"[bold {score_color}]ATS Score: {result.ats_score}/100[/bold {score_color}]")
+
+                if (
+                    ENABLE_GEMINI_POLISH
+                    and result.tailoring
+                    and result.ats_score < GEMINI_POLISH_MIN_SCORE
+                    and ats_report.keywords_missing
+                ):
+                    try:
+                        console.print("[cyan]Optional Gemini resume polish enabled[/cyan]")
+                        previous_score = result.ats_score
+                        result.tailoring = await polish_resume_with_gemini(
+                            result.tailoring,
+                            ats_report.keywords_missing,
+                        )
+                        resume_path = await generate_resume_pdf(
+                            result.tailoring,
+                            company_name=company_name,
+                            job_description=extraction.raw_text,
+                            output_dir=output_dir,
+                            base_resume_data=resume_data_dict,
+                        )
+                        result.resume_path = str(resume_path)
+                        markdown_resume_path = Path(resume_path).with_suffix(".md")
+                        if markdown_resume_path.exists():
+                            result.markdown_resume_path = str(markdown_resume_path)
+                        ats_text_path = Path(resume_path).with_suffix(".txt")
+                        resume_text = ats_text_path.read_text(encoding="utf-8")
+                        score, ats_report = scorer.score_resume(
+                            resume_text,
+                            extraction.raw_text,
+                            str(ats_text_path),
+                        )
+                        result.ats_score = round(score, 2)
+                        console.print(
+                            f"[bold cyan]Gemini polish score: {previous_score}/100 -> {result.ats_score}/100[/bold cyan]"
+                        )
+                    except Exception as e:
+                        console.print(
+                            f"[yellow]Gemini resume polish skipped: {escape(str(e))}[/yellow]"
+                        )
                 
                 # RETRY LOOP: Regenerate if ATS score < 90
                 retry_count = 0
@@ -493,6 +584,7 @@ async def orchestrate_application(
                             company_name=company_name,
                             job_description=extraction.raw_text,
                             output_dir=output_dir,
+                            base_resume_data=resume_data_dict,
                         )
                         result.resume_path = str(resume_path)
                         markdown_resume_path = Path(resume_path).with_suffix(".md")
@@ -621,6 +713,14 @@ async def orchestrate_application(
                     extraction.raw_text,
                     resume_data=base_resume_data,
                 )
+
+            if ENABLE_GEMINI_POLISH:
+                try:
+                    cover_letter = await polish_cover_letter_with_gemini(cover_letter)
+                except Exception as e:
+                    console.print(
+                        f"[yellow]Gemini cover-letter polish skipped: {escape(str(e))}[/yellow]"
+                    )
             
             # Save cover letter with company-based naming
             cover_letter_path = await save_cover_letter(

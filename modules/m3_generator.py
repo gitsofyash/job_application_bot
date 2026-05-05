@@ -194,14 +194,17 @@ def expand_skills_for_jd(
     ordered = []
     seen = set()
 
-    def add_skill(skill: str) -> None:
+    def add_skill(skill: str, allow_dynamic: bool = False) -> None:
         key = skill.lower()
         if key not in seen and key in base_lookup:
             ordered.append(base_lookup[key])
             seen.add(key)
+        elif allow_dynamic and key not in seen:
+            ordered.append(skill)
+            seen.add(key)
 
     for skill in selected_skills:
-        add_skill(skill)
+        add_skill(skill, allow_dynamic=True)
 
     for term in priority_terms:
         term_lower = str(term).lower()
@@ -1385,6 +1388,7 @@ async def generate_resume_pdf(
     company_name: Optional[str] = None,
     job_description: Optional[str] = None,
     output_dir: Optional[Path] = None,
+    base_resume_data: Optional[Dict[str, Any]] = None,
 ) -> Path:
     """
     Generate complete resume PDF from tailored content.
@@ -1433,7 +1437,7 @@ async def generate_resume_pdf(
     
     # Load data files
     console.log("[blue]Loading resume data...[/blue]")
-    base_resume = load_base_resume()
+    base_resume = json.loads(json.dumps(base_resume_data)) if base_resume_data else load_base_resume()
     user_profile = load_user_profile()
     
     # Merge data with encoding fixes

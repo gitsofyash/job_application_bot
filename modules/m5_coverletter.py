@@ -1,5 +1,5 @@
 """
-MODULE 5 — ATS-Friendly Cover Letter Generator
+MODULE 5 â€” ATS-Friendly Cover Letter Generator
 
 Generates tailored cover letter based on job description using LLM.
 
@@ -16,13 +16,13 @@ Features:
 
 ENHANCEMENTS (v2.0):
   - Company name-based file naming prevents overwrites
-  - Encoding issue fixes (â€ to -)
+  - Encoding issue fixes (Ã¢â‚¬ to -)
   - Better content organization
 
-⚠️ FAILURE POINTS:
-  1. LLM provider unavailable → LLMError raised
-  2. JD too large → Auto-summarized via LLM before processing
-  3. Token limit exceeded → Gracefully truncates
+âš ï¸ FAILURE POINTS:
+  1. LLM provider unavailable â†’ LLMError raised
+  2. JD too large â†’ Auto-summarized via LLM before processing
+  3. Token limit exceeded â†’ Gracefully truncates
 
 MITIGATION:
   - Structured output validation via Pydantic
@@ -230,9 +230,9 @@ def compact_resume_context(resume_data: Dict[str, Any]) -> str:
 
     return "\n".join(parts)
 
-# ═══════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # MODELS
-# ═══════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 
 class CoverLetter(BaseModel):
@@ -334,9 +334,9 @@ def build_rule_based_cover_letter(
     return normalize_cover_letter(cover_letter)
 
 
-# ═══════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # LLM PROVIDER INITIALIZATION
-# ═══════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 
 def get_llm_chain():
@@ -347,7 +347,7 @@ def get_llm_chain():
       - OLLAMA (local, default)
       - OPENAI (gpt-4-turbo)
       - ANTHROPIC (claude-opus)
-      - GEMINI (gemini-1.5-flash)
+      - COHERE (command-a-03-2025)
     
     Returns:
         LangChain LLM instance
@@ -390,25 +390,6 @@ def get_llm_chain():
                 temperature=0.4,
             )
             
-        elif LLM_PROVIDER == "GEMINI":
-            from langchain_google_genai import ChatGoogleGenerativeAI
-            import os
-            
-            # Force read from env to bypass config.py caching
-            api_key = os.getenv("GOOGLE_API_KEY")
-            if not api_key:
-                raise ValueError("GOOGLE_API_KEY not set in .env or system environment variables")
-            
-            # HARDCODED MODEL STRING to kill the 404 NOT_FOUND error
-            target_gemini_model = "gemini-3-flash-preview"
-            
-            console.log(f"[cyan]Initializing Gemini ({target_gemini_model}) for Tailoring[/cyan]")
-            return ChatGoogleGenerativeAI(
-                google_api_key=api_key,
-                model=target_gemini_model, 
-                temperature=0.3,
-            )
-        
         elif LLM_PROVIDER == "COHERE":
             if not COHERE_API_KEY:
                 raise ValueError("COHERE_API_KEY not set in .env")
@@ -425,9 +406,9 @@ def get_llm_chain():
         ) from e
 
 
-# ═══════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # COVER LETTER GENERATION
-# ═══════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 
 def load_user_profile() -> Dict[str, Any]:
@@ -486,7 +467,7 @@ def format_resume_context(resume_data: Dict[str, Any]) -> str:
     if resume_data.get("experience"):
         context += "RELEVANT EXPERIENCE:\n"
         for exp in resume_data["experience"][:2]:  # Last 2 experiences
-            context += f"• {exp.get('title', '')} at {exp.get('company', '')} ({exp.get('duration', '')})\n"
+            context += f"â€¢ {exp.get('title', '')} at {exp.get('company', '')} ({exp.get('duration', '')})\n"
             for bullet in exp.get("bullets", [])[:3]:  # Top 3 bullets
                 context += f"  - {bullet}\n"
         context += "\n"
@@ -495,7 +476,7 @@ def format_resume_context(resume_data: Dict[str, Any]) -> str:
     if resume_data.get("projects"):
         context += "KEY PROJECTS:\n"
         for proj in resume_data["projects"][:2]:  # Top 2 projects
-            context += f"• {proj.get('title', '')}: {proj.get('description', '')}\n"
+            context += f"â€¢ {proj.get('title', '')}: {proj.get('description', '')}\n"
         context += "\n"
     
     # Add key skills
@@ -623,36 +604,26 @@ JSON only:""",
     )
 
     console.log(
-        f"[cyan]Generating LLM cover letter with compact prompt "
+        f"[cyan]Generating Cohere cover letter with compact prompt "
         f"({len(job_description.split())} JD words, timeout {COVER_LETTER_LLM_TIMEOUT_SECONDS}s)...[/cyan]"
     )
 
     try:
-        if LLM_PROVIDER == "OLLAMA":
-            cover_letter = await generate_cover_letter_with_ollama(prompt)
-        elif LLM_PROVIDER == "COHERE":
-            response_text = await asyncio.wait_for(
-                asyncio.to_thread(
-                    invoke_cohere_json,
-                    prompt,
-                    COVER_LETTER_LLM_MAX_TOKENS,
-                ),
-                timeout=COVER_LETTER_LLM_TIMEOUT_SECONDS,
-            )
-            try:
-                parsed = json.loads(response_text)
-            except json.JSONDecodeError as e:
-                raise ValueError(f"Cohere returned invalid JSON: {e}") from e
-            cover_letter = CoverLetter(**parsed)
-        else:
-            llm = get_llm_chain()
-            chain = llm | parser
-            cover_letter = await asyncio.wait_for(
-                asyncio.to_thread(chain.invoke, prompt),
-                timeout=COVER_LETTER_LLM_TIMEOUT_SECONDS,
-            )
+        response_text = await asyncio.wait_for(
+            asyncio.to_thread(
+                invoke_cohere_json,
+                prompt,
+                COVER_LETTER_LLM_MAX_TOKENS,
+            ),
+            timeout=COVER_LETTER_LLM_TIMEOUT_SECONDS,
+        )
+        try:
+            parsed = json.loads(response_text)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Cohere returned invalid JSON: {e}") from e
+        cover_letter = CoverLetter(**parsed)
 
-        console.log("[green]✓ Cover letter generated successfully[/green]")
+        console.log("[green]âœ“ Cover letter generated successfully[/green]")
         return normalize_cover_letter(cover_letter)
     except asyncio.TimeoutError as e:
         raise TimeoutError(
@@ -705,28 +676,8 @@ async def summarize_jd(job_description: str) -> str:
     Returns:
         Summarized job description
     """
-    llm = get_llm_chain()
-    
-    prompt_template = PromptTemplate(
-        template="""Summarize the following job description, keeping only the most important 
-requirements, responsibilities, and qualifications. Keep it under 500 words.
-
-JOB DESCRIPTION:
-{job_description}
-
-SUMMARY:""",
-        input_variables=["job_description"],
-    )
-    
     try:
-        chain = prompt_template | llm
-        
-        summarized = await asyncio.to_thread(
-            chain.invoke,
-            {"job_description": job_description},
-        )
-        
-        summarized_text = summarized.content if hasattr(summarized, "content") else str(summarized)
+        summarized_text = await asyncio.to_thread(summarize_jd_with_cohere, job_description)
         console.log(f"[dim]Summarized JD to {len(summarized_text.split())} words[/dim]")
         return summarized_text
     
@@ -735,9 +686,9 @@ SUMMARY:""",
         return job_description
 
 
-# ═══════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # COVER LETTER FILE GENERATION
-# ═══════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 
 def format_cover_letter_text(cover_letter: CoverLetter) -> str:
@@ -873,12 +824,12 @@ async def save_cover_letter(
     text_path = output_dir / f"{output_filename}.txt"
     text_content = format_cover_letter_text(cover_letter)
     text_path.write_text(text_content, encoding='utf-8')
-    console.log(f"[green]✓ Text cover letter saved:[/green] {text_path}")
+    console.log(f"[green]âœ“ Text cover letter saved:[/green] {text_path}")
     
     # Save as HTML
     html_path = output_dir / f"{output_filename}.html"
     html_content = format_cover_letter_html(cover_letter)
     html_path.write_text(html_content, encoding='utf-8')
-    console.log(f"[green]✓ HTML cover letter saved:[/green] {html_path}")
+    console.log(f"[green]âœ“ HTML cover letter saved:[/green] {html_path}")
     
     return text_path

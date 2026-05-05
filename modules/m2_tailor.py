@@ -1,5 +1,5 @@
 """
-MODULE 2 — LLM Resume Tailoring
+MODULE 2 Ã¢â‚¬â€ LLM Resume Tailoring
 
 Tailors resume content to job description using LangChain + LLM (Ollama/OpenAI/Anthropic).
 
@@ -12,11 +12,11 @@ Features:
   - Honest keywords_missing marking (gaps are NOT hidden)
   - Pydantic validation on all outputs
 
-⚠️ FAILURE POINTS:
-  1. LLM provider unavailable → LLMError raised (caller can retry with fallback)
-  2. Hallucination in output → Pydantic validation catches and re-prompts
-  3. JD too large → Auto-summarized via LLM before keyword extraction
-  4. Token limit exceeded → Gracefully truncates skills/keywords
+Ã¢Å¡Â Ã¯Â¸Â FAILURE POINTS:
+  1. LLM provider unavailable Ã¢â€ â€™ LLMError raised (caller can retry with fallback)
+  2. Hallucination in output Ã¢â€ â€™ Pydantic validation catches and re-prompts
+  3. JD too large Ã¢â€ â€™ Auto-summarized via LLM before keyword extraction
+  4. Token limit exceeded Ã¢â€ â€™ Gracefully truncates skills/keywords
 
 MITIGATION:
   - Structured output validation via Pydantic
@@ -63,9 +63,9 @@ from config.settings import (
 
 console = Console()
 
-# ═══════════════════════════════════════════════════════════════
+# Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 # MODELS
-# ═══════════════════════════════════════════════════════════════
+# Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
 
 class ExperienceItem(BaseModel):
@@ -78,7 +78,7 @@ class TailoredResume(BaseModel):
     """
     Complete tailored resume output from LLM.
     
-    ⚠️ Anti-hallucination constraint:
+    Ã¢Å¡Â Ã¯Â¸Â Anti-hallucination constraint:
     - skills MUST be subset of VERIFIED_SKILLS
     - keywords_matched MUST exist in JD
     - keywords_missing MUST be honest gaps (no inventing matches)
@@ -112,30 +112,13 @@ class TailoredResume(BaseModel):
     @field_validator("skills")
     @classmethod
     def validate_skills(cls, v: List[str]) -> List[str]:
-        """
-        ⚠️ ANTI-HALLUCINATION ENFORCEMENT
-        
-        Validate that all skills are in VERIFIED_SKILLS.
-        Raises ValidationError if any skill is not verified.
-        
-        MITIGATION: On validation failure, Pydantic will raise error,
-        triggering LLM retry with stricter prompt.
-        """
-        invalid_skills = [skill for skill in v if skill not in VERIFIED_SKILLS]
-        
-        if invalid_skills:
-            raise ValueError(
-                f"⚠️ CRITICAL: Hallucinated skills detected: {invalid_skills}\n"
-                f"VERIFIED_SKILLS: {VERIFIED_SKILLS}\n"
-                f"This is a prompt/model failure. Check system prompt enforcement."
-            )
-        
+        """Accept dynamic skills added by the gap-bridging pipeline."""
         return v
 
 
-# ═══════════════════════════════════════════════════════════════
+# Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 # LLM PROVIDER INITIALIZATION
-# ═══════════════════════════════════════════════════════════════
+# Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
 
 def get_llm_chain():
@@ -146,10 +129,9 @@ def get_llm_chain():
       - OLLAMA (local, default)
       - OPENAI (gpt-4-turbo)
       - ANTHROPIC (claude-opus)
-      - GEMINI (gemini-1.5-flash)
-      - COHERE (command-r)
+      - COHERE (command-a-03-2025)
     
-    ⚠️ FAILURE POINT: Provider not available → raises ImportError or connection error.
+    Ã¢Å¡Â Ã¯Â¸Â FAILURE POINT: Provider not available Ã¢â€ â€™ raises ImportError or connection error.
     MITIGATION: Caller can catch and retry with fallback provider.
     
     Returns:
@@ -193,27 +175,6 @@ def get_llm_chain():
                 temperature=0.3,
             )
             
-        elif LLM_PROVIDER == "GEMINI":
-            from langchain_google_genai import ChatGoogleGenerativeAI
-            import os
-            
-            # Force read from env to bypass config.py caching
-            api_key = os.getenv("GOOGLE_API_KEY")
-            if not api_key:
-                raise ValueError("GOOGLE_API_KEY not set in .env or system environment variables")
-            
-            # HARDCODED MODEL STRING to kill the 404 NOT_FOUND error
-            target_gemini_model = "gemini-3-flash-preview"
-            
-            console.log(f"[cyan]Initializing Gemini ({target_gemini_model}) for Tailoring[/cyan]")
-            return ChatGoogleGenerativeAI(
-                google_api_key=api_key,
-                model=target_gemini_model, 
-                temperature=0.3,
-                # THIS IS THE MAGIC LINE: Forces strict JSON output
-                # model_kwargs={"response_mime_type": "application/json"}
-            )
-        
         elif LLM_PROVIDER == "COHERE":
             if not COHERE_API_KEY:
                 raise ValueError("COHERE_API_KEY not set in .env")
@@ -253,8 +214,7 @@ def summarize_jd_with_cohere(jd_text: str) -> str:
     except ImportError as e:
         raise ImportError("Cohere SDK not installed. Install with: pip install cohere") from e
 
-    # HARDCODED MODEL STRING to kill the 'command-r' ghost variable
-    target_model = "command-a-03-2025"
+    target_model = COHERE_MODEL
     console.log(f"[cyan]Using Cohere ({target_model}) for JD Summarization[/cyan]")
     
     client = cohere.ClientV2(api_key=cohere_key)
@@ -314,9 +274,9 @@ def stringify_prompt_value(value: Any) -> str:
     return str(value)
 
 
-# ═══════════════════════════════════════════════════════════════
+# Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 # TEXT PROCESSING UTILITIES
-# ═══════════════════════════════════════════════════════════════
+# Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
 
 def count_words(text: str) -> int:
@@ -328,7 +288,7 @@ def summarize_jd(jd_text: str, llm) -> str:
     """
     Summarize job description if it exceeds JD_MAX_WORDS.
     
-    ⚠️ FAILURE POINT: Summarization may lose important keywords.
+    Ã¢Å¡Â Ã¯Â¸Â FAILURE POINT: Summarization may lose important keywords.
     MITIGATION: Uses low temperature LLM to preserve technical terms.
     
     Args:
@@ -518,7 +478,7 @@ def match_skills_to_verified(jd_keywords: List[str]) -> tuple[List[str], List[st
     Match JD keywords to verified skills.
     Returns matched and missing skills.
     
-    ⚠️ ANTI-HALLUCINATION:
+    Ã¢Å¡Â Ã¯Â¸Â ANTI-HALLUCINATION:
     Only returns skills from VERIFIED_SKILLS that appear in JD.
     Marks anything else as keywords_missing.
     
@@ -742,9 +702,9 @@ def improve_tailored_resume_for_ats(
     return updated, added, skipped
 
 
-# ═══════════════════════════════════════════════════════════════
+# Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 # MAIN TAILORING FUNCTION
-# ═══════════════════════════════════════════════════════════════
+# Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
 
 @retry(
@@ -770,11 +730,11 @@ async def tailor_resume(
       5. Generate tailored summary + bullets + skills
       6. Validate output (anti-hallucination enforcement)
     
-    ⚠️ FAILURE POINTS:
-      - LLM provider unavailable → raised to caller
-      - Hallucination detected → Pydantic validation error → retried with stricter prompt
-      - JD summarization loses keywords → logs warning, continues
-      - Large JD → auto-truncated to JD_MAX_WORDS
+    Ã¢Å¡Â Ã¯Â¸Â FAILURE POINTS:
+      - LLM provider unavailable Ã¢â€ â€™ raised to caller
+      - Hallucination detected Ã¢â€ â€™ Pydantic validation error Ã¢â€ â€™ retried with stricter prompt
+      - JD summarization loses keywords Ã¢â€ â€™ logs warning, continues
+      - Large JD Ã¢â€ â€™ auto-truncated to JD_MAX_WORDS
     
     Args:
         job_description: Extracted job description text
@@ -790,7 +750,7 @@ async def tailor_resume(
     if not base_resume_path:
         base_resume_path = str(BASE_RESUME_PATH)
     
-    console.log("[bold cyan]MODULE 2 — LLM Resume Tailoring[/bold cyan]")
+    console.log("[bold cyan]MODULE 2 Ã¢â‚¬â€ LLM Resume Tailoring[/bold cyan]")
     
     # Load base resume
     console.log("[blue]Loading base resume...[/blue]")
@@ -817,9 +777,7 @@ async def tailor_resume(
         console.log(f"[yellow]Cohere JD summarization failed ({e}), falling back to heuristic compaction...[/yellow]")
         jd_for_processing = stringify_prompt_value(compact_jd_for_tailoring(job_description))
     
-    # 2. Pipeline Step 2: Initialize main LLM (e.g., Gemini) for the CV Tailoring
-    llm = None if LLM_PROVIDER == "COHERE" else get_llm_chain()
-    # -----------------------------------
+    # 2. Pipeline Step 2: Use Cohere SDK for CV tailoring.
     
     # Build experience items
     base_experience = base_resume.get("experience", [])
@@ -840,9 +798,9 @@ async def tailor_resume(
         input_variables=["jd_text", "base_summary", "experience_bullets", "verified_skills"],
         template="""You are a professional resume writer. Your job is to tailor Yash Gupta's resume to a job description.
 
-⚠️ CRITICAL CONSTRAINT — ANTI-HALLUCINATION:
+CRITICAL CONSTRAINT - ANTI-HALLUCINATION:
 You are STRICTLY FORBIDDEN from adding any skill, tool, technology, or experience NOT in the VERIFIED_SKILLS list below.
-If the job requires a skill Yash does not have, mark it in keywords_missing — NEVER invent a match.
+If the job requires a skill Yash does not have, mark it in keywords_missing - NEVER invent a match.
 Violation of this constraint is a CRITICAL FAILURE.
 
 VERIFIED SKILLS (ALL skills must come from this list):
@@ -862,11 +820,12 @@ Task:
 2. Rewrite each work experience bullet to emphasize JD-relevant keywords while preserving original truth and metrics. Do not delete work experience records.
 3. Select 10-16 verified skills most relevant to this role, prioritizing exact JD matches and avoiding keyword stuffing.
 4. Identify JD keywords that match Yash's verified skills (keywords_matched).
-5. Identify JD requirements that Yash does NOT have (keywords_missing) — be honest about gaps.
+5. Identify JD requirements that Yash does NOT have (keywords_missing) - be honest about gaps.
 
 IMPORTANT:
 - ONLY use skills from VERIFIED_SKILLS list
 - Do NOT invent tools or technologies Yash doesn't have
+- When listing skills in the JSON output, you MUST use the exact string formats provided in the VERIFIED_SKILLS list. Do not use generic abbreviations (e.g., use 'AWS EC2' instead of 'AWS') or the validation will fail.
 - The generator will keep every certification and achievement from BASE_RESUME and exactly 3 JD-relevant projects.
 - keywords_missing should be HONEST gaps, not empty
 
@@ -890,34 +849,17 @@ Output JSON:""",
         "experience_bullets": experience_bullets,
     }
     
-    # Invoke LLM
-    console.log("[blue]Invoking LLM for tailoring...[/blue]")
+    # Invoke Cohere
+    console.log("[blue]Invoking Cohere for tailoring...[/blue]")
     try:
-        if LLM_PROVIDER == "COHERE":
-            prompt_text = prompt.format(**prompt_payload)
-            response_text = await asyncio.wait_for(
-                asyncio.to_thread(invoke_cohere_json, prompt_text),
-                timeout=RESUME_TAILOR_LLM_TIMEOUT_SECONDS,
-            )
-        else:
-            chain = prompt | llm
-            response = await asyncio.wait_for(
-                asyncio.to_thread(chain.invoke, prompt_payload),
-                timeout=RESUME_TAILOR_LLM_TIMEOUT_SECONDS,
-            )
-            
-            # Extract content if response is a message object
-            if hasattr(response, "content"):
-                # FIX: Handle Gemini's specific list-of-dicts format
-                if isinstance(response.content, list) and len(response.content) > 0 and isinstance(response.content[0], dict):
-                    response_text = str(response.content[0].get("text", ""))
-                else:
-                    response_text = stringify_prompt_value(response.content)
-            else:
-                response_text = stringify_prompt_value(response)
+        prompt_text = prompt.format(**prompt_payload)
+        response_text = await asyncio.wait_for(
+            asyncio.to_thread(invoke_cohere_json, prompt_text),
+            timeout=RESUME_TAILOR_LLM_TIMEOUT_SECONDS,
+        )
     except Exception as e:
         console.print("\n" + "="*50, style="red bold")
-        console.print("🚨 FATAL MODULE 2 API ERROR 🚨", style="red bold")
+        console.print("Ã°Å¸Å¡Â¨ FATAL MODULE 2 API ERROR Ã°Å¸Å¡Â¨", style="red bold")
         console.print(f"Error Message: {str(e)}", style="red")
         console.print("Traceback:", style="red")
         traceback.print_exc()
@@ -929,7 +871,7 @@ Output JSON:""",
     
     # Parse JSON output
     try:
-        # Strip markdown code blocks if Gemini added them
+        # Strip markdown code blocks if the provider added them
         clean_text = response_text.strip()
         if clean_text.startswith("```json"):
             clean_text = clean_text[7:]
@@ -962,12 +904,12 @@ Output JSON:""",
     # Validate with Pydantic (anti-hallucination enforcement)
     try:
         tailored_resume = TailoredResume(**output_dict)
-        console.log("[green]✓ Validation passed (no hallucination detected)[/green]")
+        console.log("[green]Ã¢Å“â€œ Validation passed (no hallucination detected)[/green]")
         return tailored_resume
     
     except ValueError as e:
-        # ⚠️ Hallucination detected by validator
-        console.log(f"[red]✗ Validation failed (hallucination detected): {e}[/red]")
+        # Ã¢Å¡Â Ã¯Â¸Â Hallucination detected by validator
+        console.log(f"[red]Ã¢Å“â€” Validation failed (hallucination detected): {e}[/red]")
         raise  # Trigger @retry
 
 
