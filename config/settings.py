@@ -9,6 +9,9 @@ from pathlib import Path
 from typing import Literal
 from dotenv import load_dotenv
 
+sys.dont_write_bytecode = True
+os.environ.setdefault("PYTHONDONTWRITEBYTECODE", "1")
+
 # Load .env file
 load_dotenv()
 
@@ -52,6 +55,12 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 ENABLE_GEMINI_POLISH = os.getenv("ENABLE_GEMINI_POLISH", "false").lower() == "true"
 GEMINI_POLISH_MIN_SCORE = float(os.getenv("GEMINI_POLISH_MIN_SCORE", "90"))
 GEMINI_POLISH_TIMEOUT_SECONDS = int(os.getenv("GEMINI_POLISH_TIMEOUT_SECONDS", "25"))
+
+# ATS score policy. The pipeline treats 90 as the minimum acceptable score and
+# keeps optimizing toward 97 when truthful resume/profile evidence supports it.
+ATS_MIN_SCORE = float(os.getenv("ATS_MIN_SCORE", "90"))
+ATS_TARGET_SCORE = float(os.getenv("ATS_TARGET_SCORE", "97"))
+ATS_MAX_IMPROVEMENT_PASSES = int(os.getenv("ATS_MAX_IMPROVEMENT_PASSES", "5"))
 
 # Token guard: max words to process before summarization
 JD_MAX_WORDS = 1000

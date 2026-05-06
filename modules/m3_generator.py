@@ -171,6 +171,45 @@ def flatten_base_skills(base_resume: Dict[str, Any]) -> list[str]:
     return flattened
 
 
+def normalize_profile_url(value: Optional[str], service: str) -> Optional[str]:
+    """Convert saved profile handles into clickable absolute URLs."""
+    if not value:
+        return None
+
+    raw = fix_encoding_issues(str(value)).strip()
+    if not raw:
+        return None
+
+    if raw.startswith(("http://", "https://")):
+        return raw
+
+    cleaned = raw.lstrip("/").replace("\\", "/")
+    service = service.lower()
+
+    if service == "linkedin":
+        cleaned = cleaned.removeprefix("www.").removeprefix("linkedin.com/")
+        cleaned = cleaned.removeprefix("linkedin/")
+        cleaned = cleaned.removeprefix("in/")
+        return f"https://www.linkedin.com/in/{cleaned.strip('/')}"
+
+    if service == "github":
+        cleaned = cleaned.removeprefix("www.").removeprefix("github.com/")
+        cleaned = cleaned.removeprefix("github/")
+        return f"https://github.com/{cleaned.strip('/')}"
+
+    return raw
+
+
+def profile_url_label(value: Optional[str]) -> Optional[str]:
+    """Return a compact resume label while keeping hrefs absolute."""
+    if not value:
+        return None
+    label = fix_encoding_issues(str(value)).strip()
+    label = label.removeprefix("https://").removeprefix("http://")
+    label = label.removeprefix("www.")
+    return label.rstrip("/")
+
+
 def expand_skills_for_jd(
     selected_skills: list[str],
     base_resume: Dict[str, Any],
@@ -799,12 +838,21 @@ def merge_resume_data(
     selected_skills = tailored_resume.skills if tailored_resume else flatten_base_skills(base_resume)
     selected_skills = expand_skills_for_jd(selected_skills, base_resume, tailored_resume)
 
+    linkedin = normalize_profile_url(
+        user_profile.get("linkedin") or base_resume.get("personal_info", {}).get("linkedin"),
+        "linkedin",
+    )
+    github = normalize_profile_url(
+        user_profile.get("github") or base_resume.get("personal_info", {}).get("github"),
+        "github",
+    )
+
     resume_data = ResumeData(
         name=fix_encoding_issues(user_profile.get("name") or base_resume.get("personal_info", {}).get("name", "")),
         email=user_profile.get("email") or base_resume.get("personal_info", {}).get("email", ""),
         phone=user_profile.get("phone") or base_resume.get("personal_info", {}).get("phone", ""),
-        linkedin=user_profile.get("linkedin") or base_resume.get("personal_info", {}).get("linkedin"),
-        github=user_profile.get("github") or base_resume.get("personal_info", {}).get("github"),
+        linkedin=linkedin,
+        github=github,
         summary=summary,
         experience=experience,
         projects=projects,
@@ -854,7 +902,9 @@ def render_html_resume(
             email=resume_data.email,
             phone=resume_data.phone,
             linkedin=resume_data.linkedin,
+            linkedin_label=profile_url_label(resume_data.linkedin),
             github=resume_data.github,
+            github_label=profile_url_label(resume_data.github),
             summary=resume_data.summary,
             experience=resume_data.experience,
             projects=resume_data.projects,

@@ -602,6 +602,13 @@ ATS_KEYWORD_PHRASES = {
     "analytical": "analytical problem-solving",
     "communication": "cross-functional team communication and collaboration",
     "collaboration": "cross-functional team communication and collaboration",
+    "attention to detail": "attention to detail in code quality, testing, and production readiness",
+    "mentoring": "mentoring through technical workshops, code reviews, and developer guidance",
+    "problem-solving": "practical problem-solving across backend, cloud, and embedded systems",
+    "team player": "collaborative team player across engineering and hardware teams",
+    "self-motivated": "self-motivated ownership of independent learning and delivery",
+    "quick learner": "quick learner adapting across cloud, backend, and embedded domains",
+    "leadership": "technical leadership through workshops and cross-team delivery",
     "logging": "structured logging and centralized logging",
     "monitoring": "production monitoring and observability",
     "scalability": "system scalability and performance optimization",
@@ -630,6 +637,19 @@ ATS_KEYWORD_PHRASES = {
     "docker": "containerization best practices",
     "cloud": "cloud infrastructure optimization",
     "rest": "REST API design patterns",
+}
+
+ATS_SOFT_SKILL_LABELS = {
+    "analytical": "Analytical Skills",
+    "attention to detail": "Attention to Detail",
+    "communication": "Communication",
+    "collaboration": "Collaboration",
+    "leadership": "Leadership",
+    "mentoring": "Mentoring",
+    "problem-solving": "Problem-Solving",
+    "quick learner": "Quick Learner",
+    "self-motivated": "Self-Motivated",
+    "team player": "Team Player",
 }
 
 
@@ -663,6 +683,14 @@ def improve_tailored_resume_for_ats(
         phrase = ATS_KEYWORD_PHRASES.get(normalized)
         if phrase:
             summary_terms.append(phrase)
+            supported = True
+
+        soft_skill_label = ATS_SOFT_SKILL_LABELS.get(normalized)
+        if soft_skill_label and soft_skill_label not in existing_skills:
+            # Keep ATS-required soft skills early enough to survive compact
+            # one-page density profiles that cap the skills line.
+            insert_at = min(6, len(existing_skills))
+            existing_skills.insert(insert_at, soft_skill_label)
             supported = True
 
         if supported:

@@ -9,8 +9,10 @@ An intelligent automation tool that streamlines the job application process by a
 - **Job Description Extraction**: Automatically extract structured data from job postings using web scraping
 - **Resume Tailoring**: Intelligently tailor your resume to match specific job descriptions using LLM
 - **ATS Optimization**: Generate ATS-friendly resumes with proper formatting and keyword optimization
+- **ATS Score Policy**: Enforces a configurable 90+ minimum and keeps optimizing toward a 97 target when supported by truthful resume data
 - **PDF Generation**: Create professional, company-specific PDF resumes (strict 1-page format)
 - **Cover Letter Generation**: Automatically generate tailored cover letters based on job requirements
+- **Profile Q&A**: Ask questions about your saved resume/profile from the command line
 - **Multi-LLM Support**: Works with multiple LLM providers (Cohere, OpenAI, Anthropic, Ollama, Google Gemini)
 - **Company-Based File Management**: Automatically organize outputs by company name with no file overwrites
 - **Dry-Run Mode**: Test the entire pipeline without generating output files
@@ -74,6 +76,14 @@ Apply to a single job by providing a job posting URL:
 
 ```bash
 python main.py --url "https://jobs.example.com/job/123"
+```
+
+### Ask About Your Resume/Profile
+
+Answer questions from `data/base_resume.json` and `data/user_profile.json` without running the job pipeline:
+
+```bash
+python main.py --ask "What is my current company?"
 ```
 
 ### Dry-Run Mode
@@ -156,6 +166,9 @@ job_application_bot/
 | `RESUME_TAILOR_USE_LLM` | true, false | true | Use LLM for resume tailoring |
 | `COVER_LETTER_USE_LLM` | true, false | true | Use LLM for cover letter generation |
 | `ENABLE_GEMINI_POLISH` | true, false | false | Enable Gemini polish post-processing |
+| `ATS_MIN_SCORE` | number | 90 | Minimum acceptable ATS score |
+| `ATS_TARGET_SCORE` | number | 97 | Optimization target after the minimum is met |
+| `ATS_MAX_IMPROVEMENT_PASSES` | number | 5 | Maximum resume regeneration passes for ATS improvement |
 
 ### LLM Provider Configuration
 

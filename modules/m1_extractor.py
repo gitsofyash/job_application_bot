@@ -396,7 +396,7 @@ async def extract_text_content(page: Page, platform: Platform) -> str:
                 best_score = score
                 best_text = candidate
 
-    text_content = best_text
+    text_content = clean_job_description_text(best_text)
     
     if not text_content or text_content.strip() == "":
         raise PlatformDetectionError("Extracted text is empty")
@@ -405,6 +405,76 @@ async def extract_text_content(page: Page, platform: Platform) -> str:
         console.log("[yellow]Extracted text is very short; site may need custom selectors or login/session access[/yellow]")
     
     return text_content
+
+
+def clean_job_description_text(text: str) -> str:
+    """Trim common career-site navigation, cookie banners, and related-job noise."""
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if not lines:
+        return ""
+
+    start_keywords = (
+        "REQ ID:",
+        "Description",
+        "Job Description",
+        "Responsibilities",
+        "Role Summary",
+    )
+    end_keywords = (
+        "Similar Jobs",
+        "Learn More",
+        "Our Company",
+        "Our Philosophy",
+        "Our Culture",
+        "Cookie Consent",
+        "Terms of Use",
+        "Privacy Policy",
+        "Applicant Privacy Notice",
+        "BACK TO TOP",
+    )
+    noisy_exact = {
+        "skip to main content",
+        "english",
+        "career areas",
+        "life at fedex",
+        "hiring & development",
+        "international",
+        "career search",
+        "fedex careers",
+        "apply",
+        "share job",
+        "apply now",
+    }
+    noisy_contains = (
+        "uses cookies",
+        "cookie preference",
+        "essential cookies",
+        "accept all cookies",
+        "reject optional cookies",
+    )
+
+    start_index = 0
+    for index, line in enumerate(lines):
+        if any(line.startswith(keyword) for keyword in start_keywords):
+            start_index = index
+            break
+
+    end_index = len(lines)
+    for index in range(start_index + 1, len(lines)):
+        if any(lines[index].startswith(keyword) for keyword in end_keywords):
+            end_index = index
+            break
+
+    cleaned = []
+    for line in lines[start_index:end_index]:
+        lower = line.lower()
+        if lower in noisy_exact:
+            continue
+        if any(term in lower for term in noisy_contains):
+            continue
+        cleaned.append(line)
+
+    return "\n".join(cleaned)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -447,6 +517,26 @@ async def wait_for_page_ready(page: Page, timeout_ms: int) -> None:
     
     # Small delay for JS rendering
     await asyncio.sleep(1)
+
+
+async def dismiss_cookie_banner(page: Page) -> None:
+    """Best-effort dismissal for cookie banners that cover job content."""
+    button_names = [
+        "Reject Optional Cookies",
+        "Accept All Cookies",
+        "Accept Cookies",
+        "Accept",
+        "I Agree",
+    ]
+    for name in button_names:
+        try:
+            button = page.get_by_role("button", name=name)
+            if await button.count():
+                await button.first.click(timeout=1500)
+                await page.wait_for_timeout(500)
+                return
+        except Exception:
+            continue
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -530,6 +620,7 @@ async def extract_job_description(job_url: str) -> ExtractionResult:
             
             # Wait for page to be ready
             await wait_for_page_ready(page, WAIT_NETWORK_IDLE_TIMEOUT)
+            await dismiss_cookie_banner(page)
             
             # Check for login wall
             if await detect_login_wall(page, platform):

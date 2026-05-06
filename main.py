@@ -27,12 +27,16 @@ Environment Variables:
 import asyncio
 import argparse
 import json
+import os
 import re
 import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 from dataclasses import dataclass
+
+sys.dont_write_bytecode = True
+os.environ.setdefault("PYTHONDONTWRITEBYTECODE", "1")
 
 from rich.markup import escape
 from rich.console import Console
@@ -49,6 +53,9 @@ from config.settings import (
     COVER_LETTER_USE_LLM,
     ENABLE_GEMINI_POLISH,
     GEMINI_POLISH_MIN_SCORE,
+    ATS_MIN_SCORE,
+    ATS_TARGET_SCORE,
+    ATS_MAX_IMPROVEMENT_PASSES,
 )
 
 from modules.m1_extractor import (
@@ -76,6 +83,21 @@ from modules.m6_gemini_polish import (
     polish_cover_letter_with_gemini,
     polish_resume_with_gemini,
 )
+from modules.m10_job_scanner import (
+    get_pipeline_job,
+    print_pipeline,
+    print_scan_summary,
+    scan_jobs,
+    update_pipeline_status,
+)
+from modules.m11_application_tracker import (
+    print_tracker,
+    print_tracker_stats,
+    print_tracker_verification,
+    record_pipeline_result,
+    update_application_status,
+)
+from modules.m9_profile_qa import answer_profile_question
 from utils.ats_scorer import ATSScorer
 from utils.url_parser import extract_company_name, fix_encoding_issues, sanitize_filename
 # COMMENTED OUT: Auto-apply feature
@@ -509,7 +531,7 @@ async def orchestrate_application(
                 resume_text = ats_text_path.read_text(encoding="utf-8")
                 score, ats_report = scorer.score_resume(resume_text, extraction.raw_text, str(ats_text_path))
                 result.ats_score = round(score, 2)
-                score_color = "green" if result.ats_score >= 90 else "yellow"
+                score_color = "green" if result.ats_score >= ATS_MIN_SCORE else "yellow"
                 console.print(f"[bold {score_color}]ATS Score: {result.ats_score}/100[/bold {score_color}]")
 
                 if (
@@ -552,11 +574,15 @@ async def orchestrate_application(
                             f"[yellow]Gemini resume polish skipped: {escape(str(e))}[/yellow]"
                         )
                 
-                # RETRY LOOP: Regenerate if ATS score < 90
+                # RETRY LOOP: Regenerate until the configured ATS policy is met.
                 retry_count = 0
-                max_retries = 3
+                max_retries = ATS_MAX_IMPROVEMENT_PASSES
                 
-                while result.ats_score < 90 and retry_count < max_retries and ats_report.keywords_missing:
+                while (
+                    result.ats_score < ATS_TARGET_SCORE
+                    and retry_count < max_retries
+                    and ats_report.keywords_missing
+                ):
                     retry_count += 1
                     console.print(f"[cyan]→ ATS Improvement Pass #{retry_count}/{max_retries}[/cyan]")
                     console.print(f"[yellow]Missing JD keywords: {', '.join(ats_report.keywords_missing[:10])}[/yellow]")
@@ -578,6 +604,9 @@ async def orchestrate_application(
                     
                     if added_keywords:
                         previous_score = result.ats_score
+                        previous_tailoring = result.tailoring
+                        previous_resume_path = result.resume_path
+                        previous_markdown_resume_path = result.markdown_resume_path
                         result.tailoring = improved_tailoring
                         resume_path = await generate_resume_pdf(
                             result.tailoring,
@@ -594,21 +623,55 @@ async def orchestrate_application(
                         resume_text = ats_text_path.read_text(encoding="utf-8")
                         score, ats_report = scorer.score_resume(resume_text, extraction.raw_text, str(ats_text_path))
                         result.ats_score = round(score, 2)
-                        score_color = "green" if result.ats_score >= 90 else "yellow"
+                        score_color = "green" if result.ats_score >= ATS_MIN_SCORE else "yellow"
                         console.print(f"[bold {score_color}]  → Updated ATS Score: {result.ats_score}/100[/bold {score_color}]")
-                        if result.ats_score <= previous_score:
+                        if result.ats_score < previous_score:
                             console.print(
-                                "[yellow]  No ATS gain after base-resume-safe updates; stopping retry loop[/yellow]"
+                                "[yellow]  Regenerated resume scored lower; restoring previous best tailoring[/yellow]"
+                            )
+                            result.tailoring = previous_tailoring
+                            restored_resume_path = await generate_resume_pdf(
+                                result.tailoring,
+                                company_name=company_name,
+                                job_description=extraction.raw_text,
+                                output_dir=output_dir,
+                                base_resume_data=resume_data_dict,
+                            )
+                            result.resume_path = str(restored_resume_path or previous_resume_path)
+                            restored_markdown_path = Path(result.resume_path).with_suffix(".md")
+                            result.markdown_resume_path = (
+                                str(restored_markdown_path)
+                                if restored_markdown_path.exists()
+                                else previous_markdown_resume_path
+                            )
+                            result.ats_score = previous_score
+                            break
+                        if result.ats_score >= ATS_TARGET_SCORE:
+                            console.print(
+                                f"[green]  Target ATS score reached: {result.ats_score}/100[/green]"
+                            )
+                            break
+                        if result.ats_score <= previous_score and result.ats_score >= ATS_MIN_SCORE:
+                            console.print(
+                                "[yellow]  Minimum ATS score is met and no further safe gain was found[/yellow]"
                             )
                             break
                     else:
                         console.print("[yellow]  ⚠️ No more keywords to add[/yellow]")
                         break
                 
-                if result.ats_score >= 90:
-                    console.print(f"[green]✓ ATS Score target reached: {result.ats_score}/100[/green]")
+                if result.ats_score >= ATS_TARGET_SCORE:
+                    console.print(f"[green]✓ ATS target reached: {result.ats_score}/100[/green]")
+                elif result.ats_score >= ATS_MIN_SCORE:
+                    console.print(
+                        f"[green]✓ ATS minimum met: {result.ats_score}/100 "
+                        f"(target {ATS_TARGET_SCORE}/100)[/green]"
+                    )
                 elif retry_count >= max_retries:
-                    console.print(f"[yellow]⚠️ Max retries reached. Final ATS Score: {result.ats_score}/100[/yellow]")
+                    console.print(
+                        f"[yellow]⚠️ Max retries reached below minimum. "
+                        f"Final ATS Score: {result.ats_score}/100[/yellow]"
+                    )
                     if ats_report.keywords_missing:
                         console.print(f"[dim]Still missing: {', '.join(ats_report.keywords_missing[:8])}[/dim]")
             
@@ -912,6 +975,9 @@ def parse_args() -> argparse.Namespace:
 Examples:
   # Generate ATS-friendly resume and cover letter:
   python main.py --url "https://jobs.example.com/job/123"
+
+  # Ask about your saved resume/profile:
+  python main.py --ask "What is my current company?"
   
   # Use OpenAI instead of Ollama:
   LLM_PROVIDER=OPENAI OPENAI_API_KEY=sk-xxx python main.py --url "..."
@@ -938,6 +1004,91 @@ Examples:
         type=str,
         default="",
     )
+
+    parser.add_argument(
+        "--ask",
+        help="Ask a question answered only from data/base_resume.json and data/user_profile.json",
+        type=str,
+        default="",
+    )
+
+    parser.add_argument(
+        "--scan-jobs",
+        help="Scan configured job sources and add matching roles to data/job_pipeline.json",
+        action="store_true",
+    )
+
+    parser.add_argument(
+        "--dry-run",
+        help="Preview scan results without updating pipeline/history",
+        action="store_true",
+    )
+
+    parser.add_argument(
+        "--scan-company",
+        help="Limit --scan-jobs to one configured company name",
+        type=str,
+        default="",
+    )
+
+    parser.add_argument(
+        "--pipeline",
+        help="Show the saved job pipeline",
+        action="store_true",
+    )
+
+    parser.add_argument(
+        "--process-job",
+        help="Run the existing resume pipeline for a job id from data/job_pipeline.json",
+        type=int,
+        default=0,
+    )
+
+    parser.add_argument(
+        "--tracker",
+        help="Show the application tracker",
+        action="store_true",
+    )
+
+    parser.add_argument(
+        "--tracker-status",
+        help="Filter --tracker by status",
+        type=str,
+        default="",
+    )
+
+    parser.add_argument(
+        "--update-status",
+        help="Application id to update in the tracker",
+        type=int,
+        default=0,
+    )
+
+    parser.add_argument(
+        "--status",
+        help="New application status for --update-status",
+        type=str,
+        default="",
+    )
+
+    parser.add_argument(
+        "--notes",
+        help="Optional notes for --update-status",
+        type=str,
+        default="",
+    )
+
+    parser.add_argument(
+        "--tracker-stats",
+        help="Show application tracker statistics",
+        action="store_true",
+    )
+
+    parser.add_argument(
+        "--verify-tracker",
+        help="Check tracker statuses, duplicates, and artifact links",
+        action="store_true",
+    )
     
     parser.add_argument(
         "--debug",
@@ -946,8 +1097,21 @@ Examples:
     )
     
     args = parser.parse_args()
-    if not args.url and not args.jd_file and not args.jd_text:
-        parser.error("Provide --url, --jd-file, or --jd-text")
+    has_tracker_action = (
+        args.scan_jobs
+        or args.pipeline
+        or args.process_job
+        or args.tracker
+        or args.update_status
+        or args.tracker_stats
+        or args.verify_tracker
+    )
+    if not args.url and not args.jd_file and not args.jd_text and not args.ask and not has_tracker_action:
+        parser.error(
+            "Provide --url, --jd-file, --jd-text, --ask, --scan-jobs, --pipeline, --process-job, or --tracker"
+        )
+    if args.update_status and not args.status:
+        parser.error("--update-status requires --status")
     return args
 
 
@@ -959,6 +1123,56 @@ Examples:
 async def main():
     """Main entry point"""
     args = parse_args()
+
+    if args.scan_jobs:
+        summary = await scan_jobs(
+            dry_run=args.dry_run,
+            company_filter=args.scan_company or None,
+        )
+        print_scan_summary(summary)
+        sys.exit(0)
+
+    if args.pipeline:
+        print_pipeline()
+        sys.exit(0)
+
+    if args.tracker:
+        print_tracker(status_filter=args.tracker_status or None)
+        sys.exit(0)
+
+    if args.tracker_stats:
+        print_tracker_stats()
+        sys.exit(0)
+
+    if args.verify_tracker:
+        print_tracker_verification()
+        sys.exit(0)
+
+    if args.update_status:
+        updated = update_application_status(args.update_status, args.status, args.notes)
+        console.print(
+            f"[green]Updated application #{updated['id']} to {updated['status']}[/green]"
+        )
+        sys.exit(0)
+
+    if args.ask:
+        response = answer_profile_question(args.ask)
+        console.print("[bold cyan]Profile Answer[/bold cyan]")
+        console.print(response.answer)
+        if response.sources:
+            console.print("\n[dim]Sources:[/dim]")
+            for source in response.sources:
+                console.print(f"[dim]- {source}[/dim]")
+        console.print(f"[dim]Confidence: {response.confidence}[/dim]")
+        sys.exit(0)
+
+    pipeline_job = None
+    if args.process_job:
+        pipeline_job = get_pipeline_job(args.process_job)
+        args.url = str(pipeline_job.get("url") or "")
+        if not args.url:
+            console.print(f"[red]Pipeline job #{args.process_job} has no URL.[/red]")
+            sys.exit(1)
 
     manual_jd_text = args.jd_text.strip() if args.jd_text else ""
     manual_jd_source = "manual --jd-text" if manual_jd_text else None
@@ -975,6 +1189,17 @@ async def main():
         skip_apply=False,  # Auto-apply is disabled, always skip
         dry_run=None,
     )
+
+    if pipeline_job is not None:
+        application, created = record_pipeline_result(pipeline_job, result)
+        update_pipeline_status(
+            int(pipeline_job["id"]),
+            "Processed" if not result.error else "Failed",
+        )
+        action = "created" if created else "already existed"
+        console.print(
+            f"[green]Tracker application #{application['id']} {action}; pipeline job #{pipeline_job['id']} updated.[/green]"
+        )
     
     # Exit with appropriate code
     if result.error:

@@ -1,0 +1,72 @@
+{
+  "title_filter": {
+    "positive": [
+      "python",
+      "backend",
+      "software engineer",
+      "software developer",
+      "cloud",
+      "full stack",
+      "flask",
+      "django",
+      "aws"
+    ],
+    "negative": [
+      "senior",
+      "staff",
+      "principal",
+      "manager",
+      "director",
+      "architect",
+      "intern",
+      "unpaid"
+    ]
+  },
+  "location_filter": {
+    "preferred": [
+      "remote",
+      "india",
+      "gurugram",
+      "gurgaon",
+      "bengaluru",
+      "bangalore",
+      "hyderabad",
+      "pune",
+      "noida",
+      "delhi"
+    ],
+    "blocked": [
+      "us only",
+      "u.s. only",
+      "canada only",
+      "uk only",
+      "europe only",
+      "security clearance"
+    ]
+  },
+  "rss_search": {
+    "enabled": true,
+    "max_results": 30,
+    "max_age_hours": 24
+  },
+  "companies": [
+    {
+      "name": "Example Greenhouse Company",
+      "enabled": false,
+      "platform": "greenhouse",
+      "url": "https://job-boards.greenhouse.io/example"
+    },
+    {
+      "name": "Example Lever Company",
+      "enabled": false,
+      "platform": "lever",
+      "url": "https://jobs.lever.co/example"
+    },
+    {
+      "name": "Example Ashby Company",
+      "enabled": false,
+      "platform": "ashby",
+      "url": "https://jobs.ashbyhq.com/example"
+    }
+  ]
+}
