@@ -92,6 +92,9 @@ settings.json
 # Generated resumes and cover letters
 output/
 generated_projects/
+data/applications.json
+data/job_pipeline.json
+data/scan_history.json
 *.pdf
 *.html
 *.txt
