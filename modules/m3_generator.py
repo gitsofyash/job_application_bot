@@ -76,6 +76,45 @@ LETTER_PAGE_WIDTH = "8.5in"
 LETTER_PAGE_HEIGHT = "11in"
 RESUME_PAGE_PADDING = "0.32in"
 
+BLOCKED_RESUME_SENIORITY_TERMS = (
+    "senior",
+    "sr",
+    "staff",
+    "principal",
+    "lead",
+    "tech lead",
+    "manager",
+    "director",
+    "vp",
+    "vice president",
+    "head",
+)
+
+
+def has_blocked_resume_seniority(text: str) -> bool:
+    value = (text or "").lower()
+    return any(re.search(rf"\b{re.escape(term)}\b", value) for term in BLOCKED_RESUME_SENIORITY_TERMS)
+
+
+def filter_resume_seniority_terms(values: Iterable[str]) -> list[str]:
+    filtered = []
+    seen = set()
+    for value in values or []:
+        clean = str(value or "").strip()
+        key = clean.lower()
+        if not clean or key in seen or has_blocked_resume_seniority(clean):
+            continue
+        filtered.append(clean)
+        seen.add(key)
+    return filtered
+
+
+def base_profile_summary(base_resume: dict, user_profile: dict, selected_skills: Iterable[str]) -> str:
+    return (
+        "Software Engineer with strong foundations in DSA, system design, and backend/cloud engineering. "
+        "Builds scalable APIs and data pipelines using Python, C++, JavaScript, SQL, AWS, Docker, Kafka, PostgreSQL, testing, and monitoring."
+    )
+
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # MODELS
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -134,6 +173,35 @@ def trim_bullet_point(bullet: str, max_length: int = 120) -> str:
     return (trimmed if trimmed else bullet[:max_length]).rstrip()
 
 
+def trim_summary_text(summary: str, max_length: int = 320) -> str:
+    """
+    Trim summary prose without leaving fragments such as "and.".
+
+    Unlike bullet trimming, summary compression should prefer complete
+    sentences even if that means keeping only the first sentence.
+    """
+    summary = fix_encoding_issues(summary).strip()
+    if len(summary) <= max_length:
+        return close_sentence(summary)
+
+    clipped = summary[:max_length].rstrip()
+    sentence_end = max(clipped.rfind("."), clipped.rfind("!"), clipped.rfind("?"))
+    if sentence_end >= max_length * 0.45:
+        return close_sentence(clipped[: sentence_end + 1])
+
+    last_space = clipped.rfind(" ")
+    if last_space > max_length * 0.65:
+        clipped = clipped[:last_space]
+
+    clipped = re.sub(
+        r"(?i)\s+(and|or|with|using|for|in|of|to|and\s+\w{1,12})$",
+        "",
+        clipped,
+    )
+    clipped = clipped.rstrip(" ,;:-")
+    return close_sentence(clipped)
+
+
 
 def close_sentence(text: str) -> str:
     """Ensure compact resume prose does not end mid-thought."""
@@ -169,6 +237,45 @@ def flatten_base_skills(base_resume: Dict[str, Any]) -> list[str]:
             flattened.append(cleaned)
             seen.add(key)
     return flattened
+
+
+def normalize_profile_url(value: Optional[str], service: str) -> Optional[str]:
+    """Convert saved profile handles into clickable absolute URLs."""
+    if not value:
+        return None
+
+    raw = fix_encoding_issues(str(value)).strip()
+    if not raw:
+        return None
+
+    if raw.startswith(("http://", "https://")):
+        return raw
+
+    cleaned = raw.lstrip("/").replace("\\", "/")
+    service = service.lower()
+
+    if service == "linkedin":
+        cleaned = cleaned.removeprefix("www.").removeprefix("linkedin.com/")
+        cleaned = cleaned.removeprefix("linkedin/")
+        cleaned = cleaned.removeprefix("in/")
+        return f"https://www.linkedin.com/in/{cleaned.strip('/')}"
+
+    if service == "github":
+        cleaned = cleaned.removeprefix("www.").removeprefix("github.com/")
+        cleaned = cleaned.removeprefix("github/")
+        return f"https://github.com/{cleaned.strip('/')}"
+
+    return raw
+
+
+def profile_url_label(value: Optional[str]) -> Optional[str]:
+    """Return a compact resume label while keeping hrefs absolute."""
+    if not value:
+        return None
+    label = fix_encoding_issues(str(value)).strip()
+    label = label.removeprefix("https://").removeprefix("http://")
+    label = label.removeprefix("www.")
+    return label.rstrip("/")
 
 
 def expand_skills_for_jd(
@@ -793,18 +900,27 @@ def merge_resume_data(
             project["technologies"] = [fix_encoding_issues(t) for t in project["technologies"]]
     
     # Build resume data
-    summary = tailored_resume.summary if tailored_resume else base_resume.get("summary", "")
-    summary = fix_encoding_issues(summary)
-    
     selected_skills = tailored_resume.skills if tailored_resume else flatten_base_skills(base_resume)
     selected_skills = expand_skills_for_jd(selected_skills, base_resume, tailored_resume)
+    selected_skills = filter_resume_seniority_terms(selected_skills)
+    summary = base_profile_summary(base_resume, user_profile, selected_skills)
+    summary = fix_encoding_issues(summary)
+
+    linkedin = normalize_profile_url(
+        user_profile.get("linkedin") or base_resume.get("personal_info", {}).get("linkedin"),
+        "linkedin",
+    )
+    github = normalize_profile_url(
+        user_profile.get("github") or base_resume.get("personal_info", {}).get("github"),
+        "github",
+    )
 
     resume_data = ResumeData(
         name=fix_encoding_issues(user_profile.get("name") or base_resume.get("personal_info", {}).get("name", "")),
         email=user_profile.get("email") or base_resume.get("personal_info", {}).get("email", ""),
         phone=user_profile.get("phone") or base_resume.get("personal_info", {}).get("phone", ""),
-        linkedin=user_profile.get("linkedin") or base_resume.get("personal_info", {}).get("linkedin"),
-        github=user_profile.get("github") or base_resume.get("personal_info", {}).get("github"),
+        linkedin=linkedin,
+        github=github,
         summary=summary,
         experience=experience,
         projects=projects,
@@ -854,7 +970,9 @@ def render_html_resume(
             email=resume_data.email,
             phone=resume_data.phone,
             linkedin=resume_data.linkedin,
+            linkedin_label=profile_url_label(resume_data.linkedin),
             github=resume_data.github,
+            github_label=profile_url_label(resume_data.github),
             summary=resume_data.summary,
             experience=resume_data.experience,
             projects=resume_data.projects,
@@ -1160,7 +1278,7 @@ def compact_for_single_page(
     jd_keywords: Optional[List[str]] = None,
 ) -> ResumeData:
     """Apply the final strict compression pass if the first PDF exceeds one page."""
-    resume_data.summary = close_sentence(trim_bullet_point(resume_data.summary, max_length=320))
+    resume_data.summary = trim_summary_text(resume_data.summary, max_length=320)
     resume_data = prioritize_resume_content(
         resume_data,
         max_experience_items=2,
@@ -1188,8 +1306,9 @@ def build_density_variant(
 ) -> ResumeData:
     """Build one candidate density profile for strict one-page rendering."""
     variant = clone_resume_data(resume_data)
-    variant.summary = close_sentence(
-        trim_bullet_point(variant.summary, max_length=profile.get("summary_length", 360))
+    variant.summary = trim_summary_text(
+        variant.summary,
+        max_length=profile.get("summary_length", 360),
     )
     variant = prioritize_resume_content(
         variant,
@@ -1264,8 +1383,8 @@ DENSITY_PROFILES = [
     },
     {
         "name": "emergency",
-        "summary_length": 200,
-        "experience_items": 1,
+        "summary_length": 240,
+        "experience_items": 2,
         "bullets_per_job": 4,
         "projects": 2,
         "bullets_per_project": 1,

@@ -71,6 +71,11 @@
             padding: 0;
         }
 
+        .contact a {
+            color: #000;
+            text-decoration: none;
+        }
+
         .section {
             margin-top: 3px;
             margin-bottom: 0;
@@ -211,7 +216,7 @@
         <header class="header">
             <h1 class="name">{{ name }}</h1>
             <div class="contact">
-                {{ email }} | {{ phone }}{% if linkedin %} | {{ linkedin }}{% endif %}{% if github %} | {{ github }}{% endif %}
+                {{ email }} | {{ phone }}{% if linkedin %} | <a href="{{ linkedin }}" target="_blank" rel="noopener">{{ linkedin_label }}</a>{% endif %}{% if github %} | <a href="{{ github }}" target="_blank" rel="noopener">{{ github_label }}</a>{% endif %}
             </div>
         </header>
 

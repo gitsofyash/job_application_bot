@@ -1,0 +1,304 @@
+{
+  "title_filter": {
+    "positive": [
+      "python",
+      "backend",
+      "software engineer",
+      "software developer",
+      "cloud",
+      "full stack",
+      "flask",
+      "django",
+      "aws",
+      "devops",
+      "platform",
+      "api",
+      "sde",
+      "developer"
+    ],
+    "negative": [
+      "senior",
+      "staff",
+      "principal",
+      "lead",
+      "manager",
+      "tech lead",
+      "director",
+      "vp",
+      "vice president",
+      "head of",
+      "unpaid",
+      "intern"
+    ]
+  },
+  "location_filter": {
+    "preferred": [
+      "remote",
+      "worldwide",
+      "global",
+      "india",
+      "gurugram",
+      "gurgaon",
+      "bengaluru",
+      "bangalore",
+      "hyderabad",
+      "pune",
+      "noida",
+      "delhi",
+      "mumbai",
+      "chennai"
+    ],
+    "blocked": [
+      "us only",
+      "u.s. only",
+      "usa only",
+      "united states only",
+      "canada only",
+      "uk only",
+      "europe only",
+      "security clearance",
+      "green card",
+      "u.s. citizen",
+      "us citizen"
+    ]
+  },
+  "rss_search": {
+    "enabled": true,
+    "max_results": 30,
+    "max_age_hours": 24
+  },
+  "companies": [
+    {
+      "name": "GitLab",
+      "enabled": true,
+      "platform": "greenhouse",
+      "url": "https://job-boards.greenhouse.io/gitlab"
+    },
+    {
+      "name": "Cloudflare",
+      "enabled": true,
+      "platform": "greenhouse",
+      "url": "https://job-boards.greenhouse.io/cloudflare"
+    },
+    {
+      "name": "Datadog",
+      "enabled": true,
+      "platform": "greenhouse",
+      "url": "https://job-boards.greenhouse.io/datadog"
+    },
+    {
+      "name": "Canonical",
+      "enabled": true,
+      "platform": "greenhouse",
+      "url": "https://job-boards.greenhouse.io/canonical"
+    },
+    {
+      "name": "MongoDB",
+      "enabled": true,
+      "platform": "greenhouse",
+      "url": "https://job-boards.greenhouse.io/mongodb"
+    },
+    {
+      "name": "Twilio",
+      "enabled": true,
+      "platform": "greenhouse",
+      "url": "https://job-boards.greenhouse.io/twilio"
+    },
+    {
+      "name": "Stripe",
+      "enabled": true,
+      "platform": "greenhouse",
+      "url": "https://job-boards.greenhouse.io/stripe"
+    },
+    {
+      "name": "HashiCorp",
+      "enabled": false,
+      "platform": "greenhouse",
+      "url": "https://job-boards.greenhouse.io/hashicorp"
+    },
+    {
+      "name": "Postman",
+      "enabled": false,
+      "platform": "custom",
+      "url": "https://www.postman.com/jobs/"
+    },
+    {
+      "name": "Docker",
+      "enabled": false,
+      "platform": "lever",
+      "url": "https://jobs.lever.co/docker"
+    },
+    {
+      "name": "Elastic",
+      "enabled": false,
+      "platform": "lever",
+      "url": "https://jobs.lever.co/elastic"
+    },
+    {
+      "name": "DigitalOcean",
+      "enabled": false,
+      "platform": "lever",
+      "url": "https://jobs.lever.co/digitalocean"
+    },
+    {
+      "name": "Supabase",
+      "enabled": true,
+      "platform": "ashby",
+      "url": "https://jobs.ashbyhq.com/supabase"
+    },
+    {
+      "name": "Vercel",
+      "enabled": true,
+      "platform": "ashby",
+      "url": "https://jobs.ashbyhq.com/vercel"
+    },
+    {
+      "name": "PlanetScale",
+      "enabled": false,
+      "platform": "ashby",
+      "url": "https://jobs.ashbyhq.com/planetscale"
+    },
+    {
+      "name": "PostHog",
+      "enabled": true,
+      "platform": "ashby",
+      "url": "https://jobs.ashbyhq.com/posthog"
+    },
+    {
+      "name": "Atlassian",
+      "enabled": true,
+      "platform": "smartrecruiters",
+      "identifier": "Atlassian",
+      "url": "https://jobs.smartrecruiters.com/Atlassian"
+    },
+    {
+      "name": "Visa",
+      "enabled": true,
+      "platform": "smartrecruiters",
+      "identifier": "Visa",
+      "url": "https://jobs.smartrecruiters.com/Visa"
+    },
+    {
+      "name": "Bosch",
+      "enabled": true,
+      "platform": "smartrecruiters",
+      "identifier": "BoschGroup",
+      "url": "https://jobs.smartrecruiters.com/BoschGroup"
+    },
+    {
+      "name": "Nagarro",
+      "enabled": true,
+      "platform": "smartrecruiters",
+      "identifier": "Nagarro1",
+      "url": "https://jobs.smartrecruiters.com/Nagarro1"
+    },
+    {
+      "name": "Mollie",
+      "enabled": false,
+      "platform": "custom",
+      "url": "https://jobs.mollie.com/vacancies"
+    },
+    {
+      "name": "WeTransfer",
+      "enabled": false,
+      "platform": "recruitee",
+      "url": "https://wetransfer.recruitee.com"
+    },
+    {
+      "name": "Otrium",
+      "enabled": false,
+      "platform": "recruitee",
+      "url": "https://otrium.recruitee.com"
+    },
+    {
+      "name": "Workable Global Feed",
+      "enabled": false,
+      "platform": "workable_xml",
+      "url": "https://www.workable.com/boards/workable.xml"
+    },
+    {
+      "name": "Freshworks",
+      "enabled": false,
+      "platform": "custom",
+      "url": "https://www.freshworks.com/company/careers/jobs/"
+    },
+    {
+      "name": "Zoho",
+      "enabled": false,
+      "platform": "custom",
+      "url": "https://www.zoho.com/careers/"
+    },
+    {
+      "name": "Razorpay",
+      "enabled": false,
+      "platform": "custom",
+      "url": "https://razorpay.com/jobs/"
+    },
+    {
+      "name": "PhonePe",
+      "enabled": false,
+      "platform": "custom",
+      "url": "https://www.phonepe.com/careers/"
+    },
+    {
+      "name": "Paytm",
+      "enabled": false,
+      "platform": "custom",
+      "url": "https://paytm.com/careers/"
+    },
+    {
+      "name": "Meesho",
+      "enabled": false,
+      "platform": "custom",
+      "url": "https://www.meesho.io/jobs"
+    },
+    {
+      "name": "Swiggy",
+      "enabled": false,
+      "platform": "custom",
+      "url": "https://careers.swiggy.com/"
+    },
+    {
+      "name": "Zomato",
+      "enabled": false,
+      "platform": "custom",
+      "url": "https://www.zomato.com/careers"
+    },
+    {
+      "name": "CRED",
+      "enabled": false,
+      "platform": "custom",
+      "url": "https://cred.club/careers"
+    },
+    {
+      "name": "Groww",
+      "enabled": false,
+      "platform": "custom",
+      "url": "https://groww.in/careers"
+    },
+    {
+      "name": "BrowserStack",
+      "enabled": false,
+      "platform": "custom",
+      "url": "https://www.browserstack.com/careers"
+    },
+    {
+      "name": "Hasura",
+      "enabled": false,
+      "platform": "custom",
+      "url": "https://hasura.io/careers/"
+    },
+    {
+      "name": "Red Hat",
+      "enabled": false,
+      "platform": "custom",
+      "url": "https://www.redhat.com/en/jobs"
+    },
+    {
+      "name": "Shopify",
+      "enabled": false,
+      "platform": "custom",
+      "url": "https://www.shopify.com/careers"
+    }
+  ]
+}

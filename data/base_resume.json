@@ -19,16 +19,19 @@
   "years_experience": 0.7,
   "desired_roles": [
     "Software Engineer",
+    "Software Development Engineer",
     "Backend Engineer",
+    "Backend Software Engineer",
     "Cloud Engineer",
     "Full Stack Engineer",
     "DevOps Engineer",
-    "AI Developer",
-    "Machine Learning Engineer"
+    "AI Engineer",
+    "Machine Learning Engineer",
+    "Platform Engineer"
   ],
   "industry_preferences": [
+    "Software Product Engineering",
     "Cloud Infrastructure",
-    "Automotive Technology",
     "SaaS",
     "FinTech",
     "AI/ML",
@@ -46,7 +49,7 @@
     "linkedin_url": "linkedin/yash-gupta2601",
     "github_url": "github/gitsofyash",
     "current_company": "Nippon Audiotronix Pvt. Ltd.",
-    "current_title": "Software Engineer Intern"
+    "current_title": "Software Engineer"
   },
   "personal_info": {
     "name": "Yash Gupta",
@@ -56,7 +59,7 @@
     "linkedin": "linkedin/yash-gupta2601",
     "github": "github/gitsofyash"
   },
-  "summary": "Software Engineer with strong expertise in backend development, AWS cloud architecture, and embedded systems. Experienced in building scalable APIs, real-time data processing pipelines, and ASPICE-compliant embedded solutions. Demonstrated proficiency in cloud cost optimization, distributed systems, and sensor fusion algorithms. Proven track record in hackathon competitions with innovative problem-solving approach and ability to deliver production-grade solutions under tight deadlines.",
+  "summary": "Software Engineer with strong foundations in DSA, system design, and backend/cloud engineering. Builds scalable APIs and data pipelines using Python, C++, JavaScript, SQL, AWS, Docker, Kafka, PostgreSQL, testing, and monitoring.",
   "education": [
     {
       "degree": "B.Tech in Computer Science & Business Systems",
@@ -69,17 +72,26 @@
   ],
   "experience": [
     {
+      "title": "Software Engineer",
+      "company": "Nippon Audiotronix Pvt. Ltd.",
+      "location": "Gurugram",
+      "duration": "Mar 2026 – Present",
+      "type": "Full-Time",
+      "bullets": [
+        "Develop backend software systems with server-side logic, REST API design, and data-processing pipelines for production-grade applications",
+        "Design containerized microservices using Docker and manage Git-based deployment workflows with structured code reviews and CI/CD practices",
+        "Contribute to system architecture discussions, agile delivery, reusable service components, and technical documentation for scalable software systems"
+      ]
+    },
+    {
       "title": "Software Engineer Intern",
       "company": "Nippon Audiotronix Pvt. Ltd.",
       "location": "Gurugram",
-      "duration": "Sept 2025 – Present",
+      "duration": "Sept 2025 – Mar 2026",
       "bullets": [
-        "Architected and developed backend services for Autonomous Emergency Braking (AEB) system using Python and C++, processing 100+ sensor events/second with <50ms latency",
-        "Implemented real-time sensor fusion algorithms combining camera, and radar data with probabilistic filtering techniques for robust object detection",
-        "Reverse-engineered and integrated CAN Bus protocols for vehicle telemetry data pipelines, achieving 99.9% message delivery reliability",
-        "Executed ASPICE-compliant Unit Testing using Unity framework for high-concurrency embedded systems, achieving 95%+ code coverage",
-        "Optimized C++ embedded code for memory efficiency, reducing heap allocation by 40% through custom data structure design",
-        "Collaborated with hardware team to validate sensor calibration and timing synchronization across distributed ECUs"
+        "Built Python/C++ data-processing services for high-frequency telemetry streams, processing 100+ events/second with sub-50ms latency targets",
+        "Implemented fault-tolerant message parsing and protocol integration for distributed telemetry workflows, achieving 99.9% message delivery reliability",
+        "Created automated unit tests and optimized C++ components, improving regression coverage while reducing heap allocation by 40%"
       ]
     }
   ],
@@ -211,7 +223,7 @@
     "Runner-up, Hackbyte Hackathon 2023 – Developed innovative solution achieving 90%+ accuracy, recognized among 500+ participants",
     "Shortlisted Round 2, Smart India Hackathon 2023 – Advanced to final round as part of top 1% among 100,000+ teams nationwide",
     "Student Scholar, Gyan Ganga Institute 2021-2023 – Maintained 8.5+ CGPA for consecutive two years",
-    "Technical Volunteer, IEEE Student Chapter – Conducted workshops on embedded systems and cloud technologies"
+    "Technical Volunteer, Team Indigo – Conducted workshops on latest technologies"
   ],
   "certifications": [
     "Oracle Cloud AI Professional – Certified in machine learning and AI on Oracle Cloud",

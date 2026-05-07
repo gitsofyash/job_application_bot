@@ -63,6 +63,66 @@ from config.settings import (
 
 console = Console()
 
+BLOCKED_SENIORITY_TERMS = {
+    "senior",
+    "sr",
+    "staff",
+    "principal",
+    "lead",
+    "tech lead",
+    "manager",
+    "director",
+    "vp",
+    "vice president",
+    "head",
+}
+
+
+def _has_blocked_seniority_term(text: str) -> bool:
+    normalized = (text or "").lower()
+    return any(re.search(rf"\b{re.escape(term)}\b", normalized) for term in BLOCKED_SENIORITY_TERMS)
+
+
+def _filter_blocked_terms(values: List[str]) -> List[str]:
+    filtered = []
+    seen = set()
+    for value in values or []:
+        clean = stringify_prompt_value(value).strip()
+        key = clean.lower()
+        if not clean or key in seen or _has_blocked_seniority_term(clean):
+            continue
+        filtered.append(clean)
+        seen.add(key)
+    return filtered
+
+
+def should_generate_gap_project(
+    tailored_resume: "TailoredResume",
+    max_match_ratio: float = 0.35,
+    min_missing_keywords: int = 6,
+) -> bool:
+    """
+    Return True only when the JD is far from the verified resume evidence.
+
+    Gap projects are useful for large skill gaps, but they should not run for
+    normal ATS tuning or make unsupported requirements look solved.
+    """
+    matched = _filter_blocked_terms(list(tailored_resume.keywords_matched or []))
+    missing = _filter_blocked_terms(list(tailored_resume.keywords_missing or []))
+    total = len(matched) + len(missing)
+    if total == 0 or len(missing) < min_missing_keywords:
+        return False
+    match_ratio = len(matched) / total
+    return match_ratio <= max_match_ratio
+
+
+def _base_profile_summary(base_resume: dict, top_skills: List[str]) -> str:
+    """Build a JD-aligned summary without exposing level, tenure, title, or company."""
+    return (
+        "Software Engineer with strong foundations in DSA, system design, and backend/cloud engineering. "
+        "Builds scalable APIs and data pipelines using Python, C++, JavaScript, SQL, AWS, Docker, Kafka, PostgreSQL, testing, and monitoring."
+    )
+
 # Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 # MODELS
 # Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
@@ -467,6 +527,7 @@ def extract_keywords(text: str) -> List[str]:
         k for k in keywords
         if len(k) > 2
         and k.lower() not in ignored_capitalized_terms
+        and not _has_blocked_seniority_term(k)
         and not (k.lower() in seen or seen.add(k.lower()))
     ]
     
@@ -492,6 +553,8 @@ def match_skills_to_verified(jd_keywords: List[str]) -> tuple[List[str], List[st
     missing = []
     
     for keyword in jd_keywords:
+        if _has_blocked_seniority_term(keyword):
+            continue
         keyword_lower = keyword.lower()
         
         # Check if keyword or similar skill is in verified list
@@ -511,7 +574,7 @@ def match_skills_to_verified(jd_keywords: List[str]) -> tuple[List[str], List[st
             if keyword not in missing:
                 missing.append(keyword)
     
-    return matched, missing
+    return _filter_blocked_terms(matched), _filter_blocked_terms(missing)
 
 
 def build_rule_based_tailored_resume(
@@ -536,12 +599,8 @@ def build_rule_based_tailored_resume(
     if not matched_skills:
         matched_skills = VERIFIED_SKILLS[:10]
 
-    top_skills = matched_skills[:14]
-    skill_phrase = ", ".join(top_skills[:6])
-    summary = (
-        f"Software Engineer with hands-on experience in {skill_phrase}, building backend, cloud, and embedded systems. "
-        "Focused on scalable APIs, reliable data pipelines, testing, and measurable production outcomes aligned to the role."
-    )
+    top_skills = _filter_blocked_terms(matched_skills)[:14]
+    summary = _base_profile_summary(base_resume, top_skills)
 
     experience_items = []
     for exp in base_resume.get("experience", []):
@@ -558,8 +617,8 @@ def build_rule_based_tailored_resume(
         summary=summary,
         experience=experience_items,
         skills=top_skills,
-        keywords_matched=matched_skills,
-        keywords_missing=missing_keywords,
+        keywords_matched=_filter_blocked_terms(matched_skills),
+        keywords_missing=_filter_blocked_terms(missing_keywords),
     )
 
 
@@ -602,6 +661,12 @@ ATS_KEYWORD_PHRASES = {
     "analytical": "analytical problem-solving",
     "communication": "cross-functional team communication and collaboration",
     "collaboration": "cross-functional team communication and collaboration",
+    "attention to detail": "attention to detail in code quality, testing, and production readiness",
+    "mentoring": "developer enablement through workshops, code reviews, and documentation",
+    "problem-solving": "practical problem-solving across backend, cloud, and embedded systems",
+    "team player": "collaborative team player across engineering and hardware teams",
+    "self-motivated": "self-motivated ownership of independent learning and delivery",
+    "quick learner": "quick learner adapting across cloud, backend, and embedded domains",
     "logging": "structured logging and centralized logging",
     "monitoring": "production monitoring and observability",
     "scalability": "system scalability and performance optimization",
@@ -632,6 +697,19 @@ ATS_KEYWORD_PHRASES = {
     "rest": "REST API design patterns",
 }
 
+ATS_SOFT_SKILL_LABELS = {
+    "analytical": "Analytical Skills",
+    "attention to detail": "Attention to Detail",
+    "communication": "Communication",
+    "collaboration": "Collaboration",
+    "leadership": "Leadership",
+    "mentoring": "Mentoring",
+    "problem-solving": "Problem-Solving",
+    "quick learner": "Quick Learner",
+    "self-motivated": "Self-Motivated",
+    "team player": "Team Player",
+}
+
 
 def improve_tailored_resume_for_ats(
     tailored_resume: TailoredResume,
@@ -652,6 +730,9 @@ def improve_tailored_resume_for_ats(
 
     for keyword in missing_keywords:
         normalized = keyword.lower().strip()
+        if _has_blocked_seniority_term(normalized):
+            skipped.append(keyword)
+            continue
         mapped_skills = ATS_KEYWORD_SKILL_MAP.get(normalized, [])
         supported = False
 
@@ -663,6 +744,14 @@ def improve_tailored_resume_for_ats(
         phrase = ATS_KEYWORD_PHRASES.get(normalized)
         if phrase:
             summary_terms.append(phrase)
+            supported = True
+
+        soft_skill_label = ATS_SOFT_SKILL_LABELS.get(normalized)
+        if soft_skill_label and soft_skill_label not in existing_skills:
+            # Keep ATS-required soft skills early enough to survive compact
+            # one-page density profiles that cap the skills line.
+            insert_at = min(6, len(existing_skills))
+            existing_skills.insert(insert_at, soft_skill_label)
             supported = True
 
         if supported:
@@ -695,9 +784,12 @@ def improve_tailored_resume_for_ats(
             updated.summary = f"{core_summary} {ats_sentence}"
 
     updated.skills = existing_skills[:24]
+    updated.skills = _filter_blocked_terms(updated.skills)[:24]
+    updated.keywords_matched = _filter_blocked_terms(updated.keywords_matched)
     updated.keywords_missing = [
         keyword for keyword in updated.keywords_missing if keyword not in added
     ]
+    updated.keywords_missing = _filter_blocked_terms(updated.keywords_missing)
 
     return updated, added, skipped
 
@@ -803,6 +895,11 @@ You are STRICTLY FORBIDDEN from adding any skill, tool, technology, or experienc
 If the job requires a skill Yash does not have, mark it in keywords_missing - NEVER invent a match.
 Violation of this constraint is a CRITICAL FAILURE.
 
+PROFILE LEVEL CONSTRAINT:
+Do NOT use seniority words such as senior, staff, principal, lead, manager, director, VP, or head in the summary, skills, matched keywords, or rewritten bullets.
+Do NOT mention years of experience, current title, internship level, or current company in the summary.
+Base the summary on verified skills and project evidence, not on the job title if the job is senior-level.
+
 VERIFIED SKILLS (ALL skills must come from this list):
 {verified_skills}
 
@@ -816,7 +913,7 @@ JOB DESCRIPTION:
 {jd_text}
 
 Task:
-1. Write a concise 2 sentence professional summary tailored to this JD, highlighting keywords from the job description that match Yash's verified skills.
+1. Write a concise 2 sentence professional summary based on verified skills and project evidence, highlighting only JD keywords that match verified skills.
 2. Rewrite each work experience bullet to emphasize JD-relevant keywords while preserving original truth and metrics. Do not delete work experience records.
 3. Select 10-16 verified skills most relevant to this role, prioritizing exact JD matches and avoiding keyword stuffing.
 4. Identify JD keywords that match Yash's verified skills (keywords_matched).
@@ -904,6 +1001,16 @@ Output JSON:""",
     # Validate with Pydantic (anti-hallucination enforcement)
     try:
         tailored_resume = TailoredResume(**output_dict)
+        tailored_resume.summary = _base_profile_summary(
+            base_resume,
+            _filter_blocked_terms(tailored_resume.skills or matched_skills),
+        )
+        tailored_resume.skills = _filter_blocked_terms(tailored_resume.skills)
+        tailored_resume.keywords_matched = _filter_blocked_terms(tailored_resume.keywords_matched)
+        tailored_resume.keywords_missing = _filter_blocked_terms(tailored_resume.keywords_missing)
+        for item in tailored_resume.experience:
+            if _has_blocked_seniority_term(item.tailored):
+                item.tailored = item.original
         console.log("[green]Ã¢Å“â€œ Validation passed (no hallucination detected)[/green]")
         return tailored_resume
     

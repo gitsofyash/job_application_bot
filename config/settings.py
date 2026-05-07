@@ -9,6 +9,9 @@ from pathlib import Path
 from typing import Literal
 from dotenv import load_dotenv
 
+sys.dont_write_bytecode = True
+os.environ.setdefault("PYTHONDONTWRITEBYTECODE", "1")
+
 # Load .env file
 load_dotenv()
 
@@ -31,7 +34,7 @@ DATA_DIR.mkdir(exist_ok=True)
 # ═══════════════════════════════════════════════════════════════
 # LLM CONFIGURATION
 # ═══════════════════════════════════════════════════════════════
-LLM_PROVIDER: Literal["COHERE"] = os.getenv(
+LLM_PROVIDER: Literal["COHERE", "OLLAMA", "OPENAI", "ANTHROPIC"] = os.getenv(
     "LLM_PROVIDER", "COHERE"
 ).upper()  # type: ignore
 
@@ -39,13 +42,13 @@ OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3")
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-OPENAI_MODEL = "gpt-4-turbo"
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4-turbo")
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
-ANTHROPIC_MODEL = "claude-opus"
+ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-opus")
 
 COHERE_API_KEY = os.getenv("COHERE_API_KEY", "")
-COHERE_MODEL = "command-a-03-2025"
+COHERE_MODEL = os.getenv("COHERE_MODEL", "command-a-03-2025")
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
@@ -53,8 +56,14 @@ ENABLE_GEMINI_POLISH = os.getenv("ENABLE_GEMINI_POLISH", "false").lower() == "tr
 GEMINI_POLISH_MIN_SCORE = float(os.getenv("GEMINI_POLISH_MIN_SCORE", "90"))
 GEMINI_POLISH_TIMEOUT_SECONDS = int(os.getenv("GEMINI_POLISH_TIMEOUT_SECONDS", "25"))
 
+# ATS score policy. The pipeline treats 90 as the minimum acceptable score and
+# keeps optimizing toward 97 when truthful resume/profile evidence supports it.
+ATS_MIN_SCORE = float(os.getenv("ATS_MIN_SCORE", "90"))
+ATS_TARGET_SCORE = float(os.getenv("ATS_TARGET_SCORE", "97"))
+ATS_MAX_IMPROVEMENT_PASSES = int(os.getenv("ATS_MAX_IMPROVEMENT_PASSES", "5"))
+
 # Token guard: max words to process before summarization
-JD_MAX_WORDS = 1000
+JD_MAX_WORDS = int(os.getenv("JD_MAX_WORDS", "1000"))
 
 # Resume tailoring defaults to the deterministic ATS-optimized path. Turn this
 # on only when you specifically want slower LLM bullet rewriting.
