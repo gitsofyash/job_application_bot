@@ -70,6 +70,7 @@ from modules.m2_tailor import (
     TailoredResume,
     build_rule_based_tailored_resume,
     improve_tailored_resume_for_ats,
+    should_generate_gap_project,
 )
 from modules.m2_5_gap_filler import generate_gap_project
 from modules.m3_generator import generate_resume_pdf
@@ -84,6 +85,7 @@ from modules.m6_gemini_polish import (
     polish_resume_with_gemini,
 )
 from modules.m10_job_scanner import (
+    clean_pipeline,
     get_pipeline_job,
     print_pipeline,
     print_scan_summary,
@@ -448,46 +450,55 @@ async def orchestrate_application(
         # ═══════════════════════════════════════════════════════════════
         resume_data_dict = None
         if result.tailoring and result.tailoring.keywords_missing:
-            console.print("[bold cyan]MODULE 2.5: Gap-Bridging Project[/bold cyan]\n")
-            try:
-                gap_project = await generate_gap_project(result.tailoring.keywords_missing)
-                if gap_project:
-                    technologies = [
-                        str(tech).strip()
-                        for tech in gap_project.get("technologies", [])
-                        if str(tech).strip()
-                    ]
-                    existing_skills = list(result.tailoring.skills or [])
-                    for technology in technologies:
-                        if technology not in existing_skills:
-                            existing_skills.append(technology)
-                    result.tailoring.skills = existing_skills
-                    result.tailoring.keywords_missing = []
-
-                    with open(BASE_RESUME_PATH, "r", encoding="utf-8") as f:
-                        resume_data_dict = json.load(f)
-
-                    project_title = str(gap_project.get("title", "Gap Bridging Project")).strip()
-                    if "(Independent Learning)" not in project_title:
-                        project_title = f"{project_title} (Independent Learning)"
-                    resume_project = {
-                        "title": project_title,
-                        "date": "Independent Learning",
-                        "description": str(gap_project.get("description", "")),
-                        "technologies": technologies,
-                        "bullets": [str(gap_project.get("description", ""))],
-                    }
-                    resume_data_dict.setdefault("projects", [])
-                    resume_data_dict["projects"].insert(0, resume_project)
-                    base_resume_data = resume_data_dict
-
-                    console.print(f"[green]Gap project added:[/green] {project_title}")
-                    if gap_project.get("project_path"):
-                        console.print(f"[dim]Code: {gap_project['project_path']}[/dim]\n")
-            except Exception as e:
+            if not should_generate_gap_project(result.tailoring):
+                matched_count = len(result.tailoring.keywords_matched or [])
+                missing_count = len(result.tailoring.keywords_missing or [])
                 console.print(
-                    f"[yellow]Module 2.5 warning: {escape(str(e))}. Continuing without gap project.[/yellow]\n"
+                    "[dim]Gap project skipped: JD/resume gap is not large enough "
+                    f"(matched={matched_count}, missing={missing_count}).[/dim]\n"
                 )
+            else:
+                console.print("[bold cyan]MODULE 2.5: Gap-Bridging Project[/bold cyan]\n")
+                console.print(
+                    "[yellow]Large JD/resume gap detected. Adding an Independent Learning project "
+                    "without promoting its technologies to verified skills.[/yellow]\n"
+                )
+                try:
+                    gap_project = await generate_gap_project(result.tailoring.keywords_missing)
+                    if gap_project:
+                        technologies = [
+                            str(tech).strip()
+                            for tech in gap_project.get("technologies", [])
+                            if str(tech).strip()
+                        ]
+
+                        with open(BASE_RESUME_PATH, "r", encoding="utf-8") as f:
+                            resume_data_dict = json.load(f)
+
+                        project_title = str(gap_project.get("title", "Gap Bridging Project")).strip()
+                        if "(Independent Learning)" not in project_title:
+                            project_title = f"{project_title} (Independent Learning)"
+                        resume_project = {
+                            "title": project_title,
+                            "date": "Independent Learning",
+                            "description": str(gap_project.get("description", "")),
+                            "technologies": technologies,
+                            "bullets": [str(gap_project.get("description", ""))],
+                        }
+                        resume_data_dict.setdefault("projects", [])
+                        resume_data_dict["projects"].insert(0, resume_project)
+                        base_resume_data = resume_data_dict
+
+                        console.print(f"[green]Gap project added:[/green] {project_title}")
+                        console.print(
+                            "[dim]Unsupported JD keywords remain visible for honest scoring.[/dim]"
+                        )
+                        if gap_project.get("project_path"):
+                            console.print(f"[dim]Code: {gap_project['project_path']}[/dim]\n")
+                except Exception as e:
+                    console.print(
+                        f"[yellow]Module 2.5 warning: {escape(str(e))}. Continuing without gap project.[/yellow]\n"
+                    )
 
         # MODULE 3: GENERATE RESUME PDF
         # ═══════════════════════════════════════════════════════════════
@@ -1038,6 +1049,12 @@ Examples:
     )
 
     parser.add_argument(
+        "--clean-pipeline",
+        help="Remove unknown-company and duplicate rows from data/job_pipeline.json",
+        action="store_true",
+    )
+
+    parser.add_argument(
         "--process-job",
         help="Run the existing resume pipeline for a job id from data/job_pipeline.json",
         type=int,
@@ -1100,6 +1117,7 @@ Examples:
     has_tracker_action = (
         args.scan_jobs
         or args.pipeline
+        or args.clean_pipeline
         or args.process_job
         or args.tracker
         or args.update_status
@@ -1134,6 +1152,16 @@ async def main():
 
     if args.pipeline:
         print_pipeline()
+        sys.exit(0)
+
+    if args.clean_pipeline:
+        cleaned = clean_pipeline()
+        console.print(
+            "[green]Pipeline cleaned:[/green] "
+            f"kept={cleaned['kept']}, "
+            f"removed_unknown={cleaned['removed_unknown']}, "
+            f"removed_duplicates={cleaned['removed_duplicates']}"
+        )
         sys.exit(0)
 
     if args.tracker:

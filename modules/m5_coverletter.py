@@ -301,11 +301,11 @@ def build_rule_based_cover_letter(
     projects = resume_data.get("projects", []) if resume_data else []
     project_name = projects[0].get("title", "cloud and backend engineering projects") if projects else "cloud and backend engineering projects"
     experience = resume_data.get("experience", []) if resume_data else []
-    current_role = "Software Engineer"
-    current_company = "Nippon Audiotronix Pvt. Ltd."
+    recent_role = "Software Engineer"
+    recent_company = ""
     if experience:
-        current_role = experience[0].get("title", current_role)
-        current_company = experience[0].get("company", current_company)
+        recent_role = experience[0].get("title", recent_role)
+        recent_company = experience[0].get("company", recent_company)
 
     skills_text = ", ".join(selected_skills)
     name = user_profile.get("name", "Yash Gupta")
@@ -317,7 +317,8 @@ def build_rule_based_cover_letter(
             f"My background in {skills_text} aligns well with the technical requirements and delivery focus described in the role."
         ),
         body_paragraph_1=(
-            f"In my current role as {current_role} at {current_company}, I have built backend and real-time systems with a focus on reliability, "
+            f"In my recent {recent_role} experience"
+            f"{f' at {recent_company}' if recent_company else ''}, I built backend and data-processing systems with a focus on reliability, "
             "measurable performance, testing, and clean engineering execution."
         ),
         body_paragraph_2=(

@@ -102,6 +102,16 @@ def _direct_answer(question: str, resume: dict[str, Any], profile: dict[str, Any
     personal = resume.get("personal_info", {})
     mappings = profile.get("form_field_mappings", {})
 
+    if "current company" in q and profile.get("currently_employed") is False:
+        return ProfileAnswer("Not currently employed", ["currently_employed"], 0.98)
+
+    if "current title" in q and profile.get("currently_employed") is False:
+        return ProfileAnswer(
+            _clean(mappings.get("current_title") or "Software Engineer"),
+            ["target title"],
+            0.9,
+        )
+
     direct_fields = {
         "email": personal.get("email") or profile.get("email"),
         "phone": personal.get("phone") or profile.get("phone"),
