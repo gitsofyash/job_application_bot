@@ -36,7 +36,7 @@ from enum import Enum
 from pydantic import BaseModel, Field, field_validator
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
-from rich.console import Console
+from utils.console import SafeConsole as Console
 from tenacity import (
     retry,
     stop_after_attempt,
@@ -651,7 +651,7 @@ ATS_KEYWORD_SKILL_MAP = {
     "microservice": ["Microservices", "System Design"],
     "microservices": ["Microservices", "System Design"],
     "kafka": ["Apache Kafka"],
-    "kubernetes": ["Docker"],
+    "kubernetes": ["Kubernetes", "Docker"],
     "docker": ["Docker"],
     "cloud": ["AWS EC2", "AWS S3", "AWS Lambda", "System Design"],
     "rest": ["REST APIs"],
@@ -742,7 +742,7 @@ def improve_tailored_resume_for_ats(
                 supported = True
 
         phrase = ATS_KEYWORD_PHRASES.get(normalized)
-        if phrase:
+        if phrase and phrase.lower() not in updated.summary.lower():
             summary_terms.append(phrase)
             supported = True
 

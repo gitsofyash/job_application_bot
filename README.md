@@ -53,6 +53,12 @@ Generate resume and cover letter from a live job URL:
 python main.py --url "https://jobs.example.com/job/123"
 ```
 
+Production package entrypoint:
+
+```powershell
+python -m job_application_bot --url "https://jobs.example.com/job/123"
+```
+
 Generate from a saved JD file:
 
 ```powershell
@@ -195,10 +201,13 @@ Run these checks before sharing or after edits:
 venv\Scripts\python.exe -B extra\tests\test_enhancements.py
 venv\Scripts\python.exe -B extra\tests\test_production_smoke.py
 venv\Scripts\python.exe -B -c "import main; print('imports ok')"
+venv\Scripts\python.exe -B -m job_application_bot --ask "What is my current company?"
 ```
 
 ## More Docs
 
+- `extra/docs/PRODUCTION_READINESS.md`: production-hardening plan and migration priorities.
+- `extra/docs/ARCHITECTURE.md`: current runtime flow and component boundaries.
 - `extra/docs/SETUP_AND_SHARING.md`: how to set up, share, and personalize the project.
 - `extra/docs/PROFILE_CUSTOMIZATION.md`: how to edit resume/profile JSON safely.
 - `extra/docs/OPERATIONS.md`: common commands, troubleshooting, and maintenance.

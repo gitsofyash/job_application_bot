@@ -24,8 +24,9 @@ import json
 from typing import Tuple, Dict, List, Optional
 from pathlib import Path
 from dataclasses import dataclass
-from rich.console import Console
 from rich.table import Table
+from utils.console import SafeConsole as Console
+from utils.url_parser import fix_encoding_issues
 
 console = Console()
 
@@ -114,7 +115,7 @@ class ATSScorer:
 
     def _extract_keywords(self, jd_text: str) -> List[str]:
         """Extract important keywords from job description"""
-        jd_lower = jd_text.lower()
+        jd_lower = fix_encoding_issues(jd_text).lower()
 
         # Technical keywords to extract
         keywords = []
@@ -171,7 +172,7 @@ class ATSScorer:
 
     def _match_keywords(self, resume_text: str, keywords: List[str]) -> Tuple[List[str], List[str]]:
         """Match keywords found in resume"""
-        resume_lower = resume_text.lower()
+        resume_lower = fix_encoding_issues(resume_text).lower()
         found = []
         missing = []
 
@@ -233,6 +234,7 @@ class ATSScorer:
     def _check_structure(self, resume_text: str) -> float:
         """Check if resume has proper ATS-friendly structure"""
         score = 100
+        resume_text = fix_encoding_issues(resume_text)
         resume_lower = resume_text.lower()
 
         # Required sections
@@ -272,6 +274,7 @@ class ATSScorer:
 
     def _check_content_optimization(self, resume_text: str) -> float:
         """Check content for ATS optimization"""
+        resume_text = fix_encoding_issues(resume_text)
         score = 100
 
         # Check for action verbs
@@ -358,10 +361,10 @@ class ATSScorer:
         if not skills_match:
             return 50
 
-        skills_section = skills_match.group(1)
+        skills_section = fix_encoding_issues(skills_match.group(1))
 
         # Count number of skills listed
-        skill_items = len(re.split(r'[,;•\n-]', skills_section))
+        skill_items = len(re.split(r'[,;\u2022\n-]', skills_section))
 
         if skill_items < 5:
             score -= 30

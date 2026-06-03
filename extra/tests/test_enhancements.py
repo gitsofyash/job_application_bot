@@ -13,7 +13,11 @@ from utils.url_parser import extract_company_name, fix_encoding_issues, create_r
 # Test company name extraction
 test_urls = [
     "https://lever.co/careers/google/job/123",
+    "https://jobs.lever.co/openai/abc123",
     "https://amazon.greenhouse.io/boards/engineering/jobs/789",
+    "https://boards.greenhouse.io/stripe/jobs/789",
+    "https://jobs.ashbyhq.com/anthropic/role-id",
+    "https://apply.workable.com/canonical/j/123",
     "https://linkedin.com/jobs/view/123456",
     "https://jobs.apple.com/en-us/details/123",
 ]
@@ -43,6 +47,8 @@ companies = ["Google", "Amazon", "Microsoft"]
 for company in companies:
     resume_fn = create_resume_filename(company)
     letter_fn = create_cover_letter_filename(company)
+    assert resume_fn == "Yash_Gupta_Resume.pdf"
+    assert letter_fn == "Yash_Gupta_Cover_Letter.txt"
     print(f"\n  Company: {company}")
     print(f"    Resume: {resume_fn}")
     print(f"    Letter: {letter_fn}")

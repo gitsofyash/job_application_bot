@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 from typing import Literal
 from dotenv import load_dotenv
+from job_application_bot.runtime import resolve_data_dir, resolve_output_dir
 
 sys.dont_write_bytecode = True
 os.environ.setdefault("PYTHONDONTWRITEBYTECODE", "1")
@@ -23,8 +24,8 @@ for stream in (sys.stdout, sys.stderr):
 # PROJECT PATHS
 # ═══════════════════════════════════════════════════════════════
 PROJECT_ROOT = Path(__file__).parent.parent
-DATA_DIR = PROJECT_ROOT / "data"
-OUTPUT_DIR = PROJECT_ROOT / "output"
+DATA_DIR = resolve_data_dir(PROJECT_ROOT / "data")
+OUTPUT_DIR = resolve_output_dir(PROJECT_ROOT / "output")
 TEMPLATES_DIR = PROJECT_ROOT / "templates"
 
 # Ensure directories exist

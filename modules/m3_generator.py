@@ -39,11 +39,12 @@ import json
 import asyncio
 import re
 from pathlib import Path
+from datetime import datetime
 from typing import Optional, Dict, Any, Iterable, List
 from dataclasses import dataclass
 
 from jinja2 import Environment, FileSystemLoader, TemplateError, TemplateNotFound
-from rich.console import Console
+from utils.console import SafeConsole as Console
 from pydantic import BaseModel, Field
 
 from config.settings import (
@@ -393,12 +394,14 @@ def prioritize_resume_content(
             )
             resume_data.projects = resume_data.projects[:max_projects]
 
+    resume_data.projects = sort_projects_by_duration(resume_data.projects)
+
     # Trim project bullets with aggressive character limits
     for project in resume_data.projects:
         if "bullets" in project and len(project["bullets"]) > max_bullets_per_project:
             project["bullets"] = project["bullets"][:max_bullets_per_project]
         if "bullets" in project:
-            project["bullets"] = [trim_bullet_point(b, max_length=135) for b in project["bullets"]]
+            project["bullets"] = [close_sentence(trim_bullet_point(b, max_length=135)) for b in project["bullets"]]
 
     # Truncate education
     if len(resume_data.education) > max_education_items:
@@ -427,6 +430,42 @@ def prioritize_resume_content(
     
     return resume_data
 
+
+
+def _parse_resume_month(value: str) -> Optional[datetime]:
+    """Parse resume month labels such as Nov 2024 or May 2026."""
+    cleaned = fix_encoding_issues(str(value or "")).strip()
+    for fmt in ("%b %Y", "%B %Y"):
+        try:
+            return datetime.strptime(cleaned, fmt)
+        except ValueError:
+            continue
+    return None
+
+
+def project_duration_sort_key(project: Dict[str, Any]) -> tuple[int, int, int, str]:
+    """Sort projects by newest/current duration while keeping titles stable for ties."""
+    date_text = fix_encoding_issues(str(project.get("date", ""))).strip()
+    parts = [
+        part.strip()
+        for part in re.split(r"\s+-\s+|\s+to\s+", date_text, flags=re.IGNORECASE)
+        if part.strip()
+    ]
+    start_text = parts[0] if parts else date_text
+    end_text = parts[-1] if parts else date_text
+
+    is_present = bool(re.search(r"(?i)\bpresent\b", end_text))
+    end_month = datetime.now().replace(day=1) if is_present else _parse_resume_month(end_text)
+    start_month = _parse_resume_month(start_text)
+
+    end_value = end_month.year * 12 + end_month.month if end_month else -1
+    start_value = start_month.year * 12 + start_month.month if start_month else -1
+    return (1 if is_present else 0, end_value, start_value, str(project.get("title", "")).lower())
+
+
+def sort_projects_by_duration(projects: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Arrange projects with current/newest durations first."""
+    return sorted(projects, key=project_duration_sort_key, reverse=True)
 
 
 def select_jd_relevant_projects(

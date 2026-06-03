@@ -44,7 +44,7 @@ import httpx
 from pydantic import BaseModel, Field, field_validator
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
-from rich.console import Console
+from utils.console import SafeConsole as Console
 from tenacity import (
     retry,
     stop_after_attempt,
@@ -468,7 +468,7 @@ def format_resume_context(resume_data: Dict[str, Any]) -> str:
     if resume_data.get("experience"):
         context += "RELEVANT EXPERIENCE:\n"
         for exp in resume_data["experience"][:2]:  # Last 2 experiences
-            context += f"â€¢ {exp.get('title', '')} at {exp.get('company', '')} ({exp.get('duration', '')})\n"
+            context += f"- {exp.get('title', '')} at {exp.get('company', '')} ({exp.get('duration', '')})\n"
             for bullet in exp.get("bullets", [])[:3]:  # Top 3 bullets
                 context += f"  - {bullet}\n"
         context += "\n"
@@ -477,7 +477,7 @@ def format_resume_context(resume_data: Dict[str, Any]) -> str:
     if resume_data.get("projects"):
         context += "KEY PROJECTS:\n"
         for proj in resume_data["projects"][:2]:  # Top 2 projects
-            context += f"â€¢ {proj.get('title', '')}: {proj.get('description', '')}\n"
+            context += f"- {proj.get('title', '')}: {proj.get('description', '')}\n"
         context += "\n"
     
     # Add key skills
@@ -492,7 +492,7 @@ def format_resume_context(resume_data: Dict[str, Any]) -> str:
             all_skills.extend(skills_data)
         context += f"KEY SKILLS: {', '.join(all_skills[:15])}\n"
     
-    return context
+    return fix_encoding_issues(context)
 
 
 async def generate_cover_letter(job_description: str, resume_data: Optional[Dict[str, Any]] = None) -> CoverLetter:

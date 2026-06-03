@@ -2,6 +2,7 @@
 """Production smoke checks for the job application bot."""
 
 import json
+import io
 import sys
 from pathlib import Path
 
@@ -18,7 +19,24 @@ from modules.m2_tailor import (
 )
 from modules.m3_generator import merge_resume_data, render_html_resume
 from modules.m3_generator import trim_summary_text
+from modules.m5_coverletter import format_resume_context
 from modules.m9_profile_qa import answer_profile_question
+from job_application_bot import APP_NAME, APP_VERSION
+from job_application_bot.cli import run
+from job_application_bot.orchestrator import orchestrate_application as package_orchestrate_application
+from job_application_bot.profile_qa import answer_profile_question as package_answer_profile_question
+from main import (
+    assess_jd_quality,
+    extract_company_name_from_jd,
+    prompt_for_company_name_if_uncertain,
+)
+from utils.console import SafeConsole
+from utils.url_parser import (
+    create_cover_letter_filename,
+    create_resume_filename,
+    extract_company_name,
+    fix_encoding_issues,
+)
 
 
 def assert_true(condition: bool, message: str) -> None:
@@ -36,6 +54,14 @@ def test_env_example_is_clean() -> None:
         assert_true(marker not in content, f".env.example contains conflict marker {marker}")
     assert_true("ATS_MIN_SCORE=90" in content, "ATS score policy missing from .env.example")
     assert_true("PYTHONDONTWRITEBYTECODE=1" in content, "bytecode setting missing from .env.example")
+
+
+def test_package_entrypoint_is_importable() -> None:
+    assert_true(APP_NAME == "job-application-bot", "package app name changed")
+    assert_true(bool(APP_VERSION), "package app version is empty")
+    assert_true(callable(run), "package CLI run function is not importable")
+    assert_true(callable(package_orchestrate_application), "package orchestrator facade is not importable")
+    assert_true(callable(package_answer_profile_question), "package profile Q&A facade is not importable")
 
 
 def test_jd_cleaner_removes_noise() -> None:
@@ -56,6 +82,87 @@ def test_jd_cleaner_removes_noise() -> None:
     assert_true("Skip to main content" not in cleaned, "navigation noise was not removed")
     assert_true("Similar Jobs" not in cleaned, "similar jobs noise was not removed")
     assert_true("Build scalable APIs" in cleaned, "job content was removed incorrectly")
+
+
+def test_jd_quality_rejects_incomplete_fetches() -> None:
+    weak = "Apply now\nShare job\nSimilar Jobs\nSoftware Engineer"
+    strong = """
+    Company: Stripe
+    Software Engineer
+    Job Description
+    Responsibilities include designing backend services, REST APIs, distributed systems,
+    data pipelines, monitoring, testing, and collaborating with product teams.
+    Requirements include Python, JavaScript, SQL, cloud systems, Docker, CI/CD,
+    system design, production debugging, and experience building scalable services.
+    Preferred qualifications include microservices, observability, performance tuning,
+    reliability engineering, and secure software development practices.
+    """
+    strong = " ".join(strong.split() * 4)
+    weak_report = assess_jd_quality(weak)
+    strong_report = assess_jd_quality(strong)
+    assert_true(not weak_report.is_acceptable, "weak JD fetch should be rejected")
+    assert_true(strong_report.is_acceptable, "complete JD should pass quality gate")
+
+
+def test_company_name_extraction_from_ats_and_jd() -> None:
+    cases = {
+        "https://jobs.lever.co/openai/abc123": "openai",
+        "https://boards.greenhouse.io/stripe/jobs/789": "stripe",
+        "https://jobs.ashbyhq.com/anthropic/role-id": "anthropic",
+        "https://apply.workable.com/canonical/j/123": "canonical",
+    }
+    for url, expected in cases.items():
+        assert_true(extract_company_name(url) == expected, f"company parse failed for {url}")
+
+    jd_company = extract_company_name_from_jd(
+        "Company: Microsoft\nSoftware Engineer\nJob Description\nBuild distributed systems.",
+        fallback="linkedin-job",
+    )
+    assert_true(jd_company == "microsoft", "JD company extraction did not override fallback")
+    assert_true(
+        prompt_for_company_name_if_uncertain("linkedin-job") == "linkedin-job",
+        "non-interactive generic company fallback should remain stable",
+    )
+    assert_true(
+        prompt_for_company_name_if_uncertain("Stripe") == "stripe",
+        "identified company name should be sanitized and kept",
+    )
+
+
+def test_output_filenames_are_stable_for_sharing() -> None:
+    assert_true(create_resume_filename("Google") == "Yash_Gupta_Resume.pdf", "resume filename changed")
+    assert_true(
+        create_cover_letter_filename("Google") == "Yash_Gupta_Cover_Letter.txt",
+        "cover-letter filename changed",
+    )
+
+
+def test_mojibake_is_normalized_before_output_or_prompts() -> None:
+    fixed = fix_encoding_issues("âœ“ generated â†’ saved â€¢ item âš ï¸ warning")
+    assert_true("â" not in fixed and "Ã" not in fixed, "mojibake was not removed")
+    assert_true("OK generated -> saved - item WARN warning" == fixed, "unexpected mojibake normalization")
+
+    console = SafeConsole(record=True, width=100, file=io.StringIO())
+    console.print("[green]âœ“ Console status[/green]")
+    rendered = console.export_text()
+    assert_true("OK Console status" in rendered, "console did not sanitize status text")
+    assert_true("âœ“" not in rendered, "console leaked mojibake")
+
+    context = format_resume_context(
+        {
+            "experience": [
+                {
+                    "title": "Software Engineer",
+                    "company": "Example",
+                    "duration": "2026",
+                    "bullets": ["Built APIs"],
+                }
+            ],
+            "projects": [{"title": "Cloud API", "description": "Built services"}],
+        }
+    )
+    assert_true("â€¢" not in context, "cover-letter context leaked mojibake bullets")
+    assert_true("- Software Engineer at Example" in context, "cover-letter context lost bullet content")
 
 
 def test_ats_soft_skills_survive_as_skills() -> None:
@@ -183,7 +290,12 @@ def test_profile_qa_grounded_answer() -> None:
 def main() -> None:
     checks = [
         test_env_example_is_clean,
+        test_package_entrypoint_is_importable,
         test_jd_cleaner_removes_noise,
+        test_jd_quality_rejects_incomplete_fetches,
+        test_company_name_extraction_from_ats_and_jd,
+        test_output_filenames_are_stable_for_sharing,
+        test_mojibake_is_normalized_before_output_or_prompts,
         test_ats_soft_skills_survive_as_skills,
         test_gap_project_only_for_large_resume_gap,
         test_summary_generation_stays_general_and_jd_aligned,

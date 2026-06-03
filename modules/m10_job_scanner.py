@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 import httpx
-from rich.console import Console
+from utils.console import SafeConsole as Console
 from rich.table import Table
 
 from config.settings import DATA_DIR, PROJECT_ROOT

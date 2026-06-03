@@ -98,7 +98,7 @@
   "projects": [
     {
       "title": "Distributed File Deduplication & Metadata Service on AWS",
-      "date": "Nov 2024 – Present",
+      "date": "Nov 2025 – Feb 2026",
       "description": "Enterprise-grade hash-based file deduplication service with secure REST APIs and scalable metadata management",
       "technologies": ["Python", "AWS Lambda", "AWS API Gateway", "AWS S3", "AWS DynamoDB", "AWS IAM", "REST APIs", "Async/Await"],
       "bullets": [
@@ -111,7 +111,7 @@
     },
     {
       "title": "CloudMon – Real-Time AWS Resource Monitor Dashboard",
-      "date": "Aug 2024 – Oct 2024",
+      "date": "Aug 2025 – Oct 2025",
       "description": "Scalable cloud resource usage dashboard with automated cost alerts and ML-based optimization recommendations",
       "technologies": ["Python", "Flask", "AWS EC2", "AWS S3", "AWS RDS", "Boto3", "Docker", "PostgreSQL", "Jinja2"],
       "bullets": [
@@ -124,7 +124,7 @@
     },
     {
       "title": "Real-Time Data Processing Pipeline for Sensor Telemetry",
-      "date": "Mar 2024 – Jul 2024",
+      "date": "Mar 2025 – Jul 2025",
       "description": "High-throughput data processing pipeline handling vehicle telemetry with anomaly detection and alerting",
       "technologies": ["Python", "Apache Kafka", "PostgreSQL", "Redis", "Unit Testing", "CAN Bus"],
       "bullets": [
@@ -220,6 +220,7 @@
     }
   ],
   "achievements": [
+    "Open Source Contributor, GSSoC 2026 - Successfully merged 25 PRs",
     "Runner-up, Hackbyte Hackathon 2023 – Developed innovative solution achieving 90%+ accuracy, recognized among 500+ participants",
     "Shortlisted Round 2, Smart India Hackathon 2023 – Advanced to final round as part of top 1% among 100,000+ teams nationwide",
     "Student Scholar, Gyan Ganga Institute 2021-2023 – Maintained 8.5+ CGPA for consecutive two years",
