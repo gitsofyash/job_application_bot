@@ -1,248 +1,154 @@
 {
-  "name": "Yash Gupta",
-  "first_name": "Yash",
-  "last_name": "Gupta",
-  "email": "2004yggupta@gmail.com",
-  "phone": "+91 9351951828",
-  "location": {
-    "city": "Alwar",
-    "state": "Rajasthan",
-    "country": "India",
-    "secondary_location": "Gurugram, Haryana, India"
-  },
-  "linkedin": "linkedin/yash-gupta2601",
-  "github": "github/gitsofyash",
-  "currently_employed": true,
-  "notice_period_days": 0,
-  "willing_to_relocate": true,
-  "open_to_remote": true,
-  "years_experience": 0.7,
-  "desired_roles": [
-    "Software Engineer",
-    "Software Development Engineer",
-    "Backend Engineer",
-    "Backend Software Engineer",
-    "Cloud Engineer",
-    "Full Stack Engineer",
-    "DevOps Engineer",
-    "AI Engineer",
-    "Machine Learning Engineer",
-    "Platform Engineer"
-  ],
-  "industry_preferences": [
-    "Software Product Engineering",
-    "Big Tech",
-    "Consumer Internet",
-    "Enterprise Software",
-    "Cloud Infrastructure",
-    "SaaS",
-    "Developer Platforms",
-    "FinTech",
-    "AI/ML",
-    "E-commerce",
-    "Cybersecurity",
-    "Healthcare Technology",
-    "EdTech"
-  ],
-  "form_field_mappings": {
-    "first_name": "Yash",
-    "last_name": "Gupta",
-    "email": "2004yggupta@gmail.com",
-    "phone": "+91 9351951828",
-    "linkedin_url": "linkedin/yash-gupta2601",
-    "github_url": "github/gitsofyash",
-    "current_company": "Nippon Audiotronix Pvt. Ltd.",
-    "current_title": "Software Engineer"
-  },
   "personal_info": {
-    "name": "Yash Gupta",
-    "email": "2004yggupta@gmail.com",
-    "phone": "+91 9351951828",
-    "location": "Alwar, Rajasthan / Gurugram, Haryana, India",
-    "linkedin": "linkedin/yash-gupta2601",
-    "github": "github/gitsofyash"
+    "name": "Palak Jaiswal",
+    "email": "palakjais9827@gmail.com",
+    "phone": "+91 9827073841",
+    "location": "Jabalpur, Madhya Pradesh, India",
+    "linkedin": "linkedin.com/in/palak-jaiswal1608",
+    "github": "github.com/palakjaiswal16"
   },
-  "summary": "Software Engineer with strong foundations in DSA, system design, backend/cloud engineering, and AI-enabled developer tooling. Builds scalable APIs, event-driven services, and data pipelines using Python, C++, JavaScript, SQL, AWS, Docker, Kafka, PostgreSQL, testing, and observability for product and enterprise platforms.",
+  "summary": "AI-focused Backend Developer with hands-on experience building Python/FastAPI services, REST APIs, LLM-powered document retrieval workflows, vector search, SQL-backed systems, and production-oriented backend modules. Strong in API design, Pydantic validation, LangChain workflows, embeddings/FAISS retrieval, database design, debugging, performance optimization, and scalable service architecture for AI and data-driven products.",
   "education": [
     {
-      "degree": "B.Tech in Computer Science & Business Systems",
-      "institution": "Gyan Ganga Institute of Technology & Sciences",
-      "location": "Jabalpur",
-      "cgpa": "8.53/10.0",
-      "duration": "July 2021 – May 2025",
-      "coursework": ["Software Engineering", "Operating Systems", "Database Management Systems", "Computer Networks", "Data Structures", "Algorithms", "Cloud Computing"]
+      "degree": "Bachelor of Technology in Computer Science and Business Systems",
+      "institution": "Gyan Ganga Institute of Technology and Sciences",
+      "location": "Jabalpur, Madhya Pradesh",
+      "cgpa": "8.08/10.0",
+      "duration": "Jul 2021 - May 2025",
+      "coursework": [
+        "Software Engineering",
+        "Operating Systems",
+        "Database Management",
+        "Computer Networks"
+      ]
     }
   ],
   "experience": [
     {
       "title": "Software Engineer",
       "company": "Nippon Audiotronix Pvt. Ltd.",
-      "location": "Gurugram",
-      "duration": "Mar 2026 – Present",
-      "type": "Full-Time",
+      "location": "Gurugram, Haryana",
+      "duration": "Mar 2026 - Present",
       "bullets": [
-        "Develop backend software systems with server-side logic, REST API design, and data-processing pipelines for production-grade applications",
-        "Design containerized microservices using Docker and manage Git-based deployment workflows with structured code reviews and CI/CD practices",
-        "Contribute to system architecture discussions, agile delivery, reusable service components, and technical documentation for scalable software systems"
+        "Developed Python and Flask REST API modules for EVSE data persistence, fault logging, service workflows, and client integrations.",
+        "Designed SQL-backed workflows across MySQL and PostgreSQL, including schema design, joins, query tuning, and reliable data access patterns.",
+        "Improved backend performance by optimizing endpoints, request payloads, database queries, and integration flows for maintainable production delivery."
       ]
     },
     {
       "title": "Software Engineer Intern",
       "company": "Nippon Audiotronix Pvt. Ltd.",
-      "location": "Gurugram",
-      "duration": "Sept 2025 – Mar 2026",
+      "location": "Gurugram, Haryana",
+      "duration": "Sep 2025 - Mar 2026",
       "bullets": [
-        "Built Python/C++ data-processing services for high-frequency telemetry streams, processing 100+ events/second with sub-50ms latency targets",
-        "Implemented fault-tolerant message parsing and protocol integration for distributed telemetry workflows, achieving 99.9% message delivery reliability",
-        "Created automated unit tests and optimized C++ components, improving regression coverage while reducing heap allocation by 40%"
+        "Built Python and C++ modules for ADAS sensor ingestion, real-time data processing, and backend decision workflows.",
+        "Supported simulation workflows for obstacle detection and emergency braking using sensor-fusion logic, debugging, and reliability checks."
       ]
     }
   ],
   "projects": [
     {
-      "title": "Distributed File Deduplication & Metadata Service on AWS",
-      "date": "Nov 2025 – Feb 2026",
-      "description": "Enterprise-grade hash-based file deduplication service with secure REST APIs and scalable metadata management",
-      "technologies": ["Python", "AWS Lambda", "AWS API Gateway", "AWS S3", "AWS DynamoDB", "AWS IAM", "REST APIs", "Async/Await"],
+      "title": "AI Agent for Query Retrieval",
+      "date": "Aug 2025",
+      "description": "FastAPI microservice for natural-language search over uploaded documents using parsing, chunking, validation, and retrieval pipelines.",
+      "technologies": [
+        "Python",
+        "FastAPI",
+        "LangChain",
+        "Cohere",
+        "FAISS",
+        "Pydantic",
+        "uv",
+        "Git"
+      ],
       "bullets": [
-        "Designed and implemented hash-based deduplication algorithm reducing storage costs by 60% for duplicate-heavy workloads",
-        "Built serverless REST APIs using API Gateway + Lambda with JWT authentication and role-based access control (RBAC)",
-        "Engineered DynamoDB schemas with global secondary indexes for sub-100ms metadata retrieval on 1M+ records",
-        "Implemented S3 pre-signed URL generation for secure file downloads with configurable expiration windows",
-        "Set up CloudWatch monitoring and X-Ray tracing for real-time API performance diagnostics"
+        "Built a FastAPI microservice for natural-language search over uploaded documents using parsing, chunking, validation, and retrieval pipelines.",
+        "Implemented two-stage semantic retrieval with Cohere embeddings and FAISS indexing to return context-aware answers from document collections.",
+        "Structured API schemas and retrieval workflows with Pydantic and LangChain, improving maintainability for LLM-backed backend services."
       ]
     },
     {
-      "title": "CloudMon – Real-Time AWS Resource Monitor Dashboard",
-      "date": "Aug 2025 – Oct 2025",
-      "description": "Scalable cloud resource usage dashboard with automated cost alerts and ML-based optimization recommendations",
-      "technologies": ["Python", "Flask", "AWS EC2", "AWS S3", "AWS RDS", "Boto3", "Docker", "PostgreSQL", "Jinja2"],
+      "title": "Role-Based Content Management API",
+      "date": "Nov 2025",
+      "description": "FastAPI backend managing CRUD workflows for articles, authors, and comments with role-based access control.",
+      "technologies": [
+        "Python",
+        "FastAPI",
+        "Pydantic",
+        "PostgreSQL",
+        "Pytest"
+      ],
       "bullets": [
-        "Built interactive web dashboard using Flask + Jinja2 displaying real-time EC2, RDS, and S3 resource metrics with live updates",
-        "Implemented Boto3 data fetching pipeline with exponential backoff retry logic for AWS API resilience",
-        "Designed PostgreSQL schema with optimized indexes for efficient time-series resource metrics storage and querying",
-        "Containerized application using Docker for consistent deployment across multiple environments",
-        "Reduced idle resource costs by 25% through automated recommendations based on historical usage patterns"
+        "Built CRUD APIs for articles, authors, and comments with role-based access control for Admin and Writer permissions.",
+        "Designed PostgreSQL data models and endpoint validation, then tested access boundaries and service behavior with Pytest."
       ]
     },
     {
-      "title": "Real-Time Data Processing Pipeline for Sensor Telemetry",
-      "date": "Mar 2025 – Jul 2025",
-      "description": "High-throughput data processing pipeline handling real-time telemetry events with anomaly detection and alerting",
-      "technologies": ["Python", "Apache Kafka", "PostgreSQL", "Redis", "Unit Testing", "Event-Driven Architecture"],
+      "title": "E-Commerce Order Management and Sales Analytics Platform",
+      "date": "Jan 2026",
+      "description": "Backend and analytics project for authentication, product catalog, cart, order tracking, transactions, and reporting workflows.",
+      "technologies": [
+        "Python",
+        "Flask",
+        "MySQL",
+        "Power BI",
+        "HTML",
+        "CSS",
+        "JavaScript"
+      ],
       "bullets": [
-        "Architected Kafka consumer application processing 10,000+ messages/second from distributed telemetry producers",
-        "Implemented anomaly detection using statistical methods and real-time alerting for out-of-threshold sensor readings",
-        "Optimized database queries reducing query latency from 5s to 500ms through strategic indexing and query optimization",
-        "Built comprehensive test suite with 100+ unit tests using Python unittest framework, achieving 92% code coverage"
-      ]
-    },
-    {
-      "title": "RESTful Backend API for Task Management System",
-      "date": "Jan 2024 – Feb 2024",
-      "description": "Scalable REST API with authentication, role-based access control, and comprehensive error handling",
-      "technologies": ["Python", "Flask", "JWT", "SQLAlchemy", "PostgreSQL", "Git"],
-      "bullets": [
-        "Developed RESTful API endpoints for user authentication, task CRUD operations, and team collaboration features",
-        "Implemented JWT-based authentication with refresh token rotation for secure session management",
-        "Designed object-relational mapping (ORM) models using SQLAlchemy for efficient database interactions",
-        "Conducted code reviews and maintained clean git history with atomic commits and descriptive messages"
-      ]
-    },
-    {
-      "title": "GenAI-Powered Document Q&A System",
-      "date": "Jul 2025",
-      "description": "Intelligent web application for extracting answers and insights from uploaded PDF documents using Generative AI",
-      "technologies": ["Python", "Flask", "Generative AI", "NLP", "REST APIs", "Vector Database"],
-      "bullets": [
-        "Built a robust backend using Python and Flask to process, parse, and chunk uploaded enterprise PDF documents",
-        "Integrated Generative AI models to enable natural language querying against document contents with high contextual accuracy",
-        "Designed a clean RESTful API layer to handle file uploads and asynchronous processing of complex user queries",
-        "Implemented a caching layer to reduce API costs and improve response times for frequently asked questions"
-      ]
-    },
-    {
-      "title": "Context-Aware Support Agent with RAG Pipeline",
-      "date": "Aug 2025 – Sep 2025",
-      "description": "Retrieval-Augmented Generation (RAG) based AI agent providing highly accurate responses from technical knowledge bases",
-      "technologies": ["Python", "LangChain", "OpenAI API", "Pinecone", "Flask", "AWS EC2"],
-      "bullets": [
-        "Architected a Retrieval-Augmented Generation (RAG) pipeline to ground LLM responses in proprietary documentation, significantly reducing model hallucinations",
-        "Implemented text embedding generation and similarity search using Pinecone vector database for sub-second context retrieval",
-        "Built conversation memory management utilizing LangChain to maintain deep context across multi-turn user interactions",
-        "Deployed the backend service on AWS EC2 with a Flask API, supporting concurrent user sessions with asynchronous prompt processing"
-      ]
-    },
-    {
-      "title": "Automated Code Review & Documentation Microservice",
-      "date": "Oct 2025 – Nov 2025",
-      "description": "Developer tooling utility leveraging LLMs to automate code documentation and identify anti-patterns in pull requests",
-      "technologies": ["Python", "Hugging Face Models", "Prompt Engineering", "FastAPI", "Git Hooks"],
-      "bullets": [
-        "Developed a FastAPI microservice to intercept Git webhook events and automatically analyze incoming pull requests using open-source language models",
-        "Engineered strict few-shot prompts to accurately extract functional logic from complex codebases and generate structured Markdown documentation",
-        "Implemented a continuous integration (CI) script to automatically append AI-generated summaries and actionable refactoring suggestions directly to code reviews",
-        "Optimized token usage and API latency by strategically chunking large source code files prior to model inference"
-      ]
-    },
-    {
-      "title": "AI-Driven Log Analysis and Alerting Pipeline",
-      "date": "Dec 2025 – Feb 2026",
-      "description": "Serverless log processing pipeline utilizing large language models to identify, categorize, and summarize anomalous system events",
-      "technologies": ["Python", "AWS Lambda", "OpenAI API", "AWS CloudWatch", "Elasticsearch", "REST APIs"],
-      "bullets": [
-        "Architected a serverless log ingestion pipeline using AWS Lambda to process real-time error logs streamed directly from AWS CloudWatch",
-        "Integrated large language models via API to analyze unstructured stack traces, automatically categorizing complex errors and generating actionable debugging summaries",
-        "Designed a RESTful API to serve categorized anomalies to a central monitoring dashboard, streamlining incident response for the development team",
-        "Implemented efficient batch processing and token-limiting strategies to maintain high system throughput while strictly controlling external AI API costs"
-      ]
-    },
-    {
-      "title": "Edge Computer Vision Sensor Fusion Prototype",
-      "date": "Dec 2025 – Mar 2026",
-      "description": "Edge AI prototype for real-time obstacle detection using multi-sensor fusion and optimized computer vision inference",
-      "technologies": ["Python", "C++", "NVIDIA Jetson Orin NX", "Computer Vision", "Sensor Fusion", "Edge AI"],
-      "bullets": [
-        "Engineered a modular late-fusion pipeline combining sensor telemetry and camera feeds for robust obstacle detection on an NVIDIA Jetson Orin NX",
-        "Implemented real-time telemetry ingestion and state estimation logic for low-latency situational awareness",
-        "Designed control-flow logic to trigger safety alerts under predefined risk thresholds",
-        "Optimized YOLO models for real-time processing on edge hardware, ensuring sub-50ms inference latency"
-      ]
-    },
-    {
-      "title": "Real-Time Computer Vision Monitoring System",
-      "date": "Feb 2026",
-      "description": "Real-time computer vision system deployed on edge hardware to detect attention and fatigue signals",
-      "technologies": ["Python", "MediaPipe", "Computer Vision", "Picamera2", "Edge Computing"],
-      "bullets": [
-        "Developed a lightweight Python application utilizing MediaPipe to track complex facial landmarks and calculate the Eye Aspect Ratio (EAR) in real-time",
-        "Optimized inference performance for edge devices using Picamera2, ensuring low-latency video stream processing",
-        "Implemented threshold-based alerting mechanisms to trigger warnings upon detecting sustained signs of fatigue or distraction",
-        "Architected the system to run entirely offline, ensuring privacy and reliability in variable network conditions"
+        "Built backend workflows for authentication, product listings, cart, order placement, tracking, transactions, and analytics-ready reporting.",
+        "Designed normalized MySQL schemas for products, customers, carts, orders, and transactions, with SQL joins for business insights."
       ]
     }
   ],
   "achievements": [
-    "Open Source Contributor, GSSoC 2026 - Successfully merged 25 PRs",
-    "Runner-up, Hackbyte Hackathon 2023 – Developed innovative solution achieving 90%+ accuracy, recognized among 500+ participants",
-    "Shortlisted Round 2, Smart India Hackathon 2023 – Advanced to final round as part of top 1% among 100,000+ teams nationwide",
-    "Student Scholar, Gyan Ganga Institute 2021-2023 – Maintained 8.5+ CGPA for consecutive two years",
-    "Technical Volunteer, Team Indigo – Conducted workshops on latest technologies"
+    "Great India Hackathon - Best Women's Team Track Winner",
+    "Coordinator, Team Indigo Tech Club - led Python, Git, and open-source workshops for 200+ students."
   ],
   "certifications": [
-    "Oracle Cloud AI Professional – Certified in machine learning and AI on Oracle Cloud",
-    "AWS Cloud Architecting – Specialist in designing scalable AWS infrastructure",
-    "AWS Cloud Foundation – Core AWS services and cloud computing concepts",
-    "Cisco Cybersecurity Essentials – Network security and threat mitigation strategies"
+    "Cisco Python Essentials",
+    "AWS Cloud Foundation",
+    "Oracle SQL Programming",
+    "Cisco CCNA: Networking"
   ],
   "skills": {
-    "languages": ["Python", "C++", "SQL", "JavaScript", "Bash"],
-    "backend": ["REST APIs", "Microservices", "System Design", "Data Structures", "Algorithms", "API Design", "Distributed Systems", "Authentication", "Caching", "Scalability", "Object-Oriented Design", "Asynchronous Processing", "Event-Driven Architecture", "High-Throughput Services"],
-    "cloud": ["AWS EC2", "AWS S3", "AWS Lambda", "AWS RDS", "AWS DynamoDB", "AWS API Gateway", "AWS IAM", "AWS CloudWatch", "Boto3"],
-    "databases": ["PostgreSQL", "MySQL", "AWS DynamoDB", "Redis", "SQLAlchemy", "Database Design", "Query Optimization"],
-    "tools": ["Git", "GitHub", "Docker", "Linux", "CI/CD", "Apache Kafka", "Postman", "Debugging Tools", "Logging Systems", "Monitoring Tools", "Observability"],
-    "frameworks": ["Flask", "FastAPI", "JWT Authentication", "SQLAlchemy ORM", "Jinja2"],
-    "domains": ["Backend Engineering", "Cloud Infrastructure", "SaaS Platforms", "E-commerce Systems", "Consumer Internet Platforms", "Enterprise Software", "Developer Tools", "Production Systems", "Backend Automation", "Real-time Data Processing", "System Reliability", "Performance Optimization"],
-    "methodologies": ["Agile/Scrum", "SDLC", "TDD", "CI/CD", "Code Reviews", "Problem Solving", "Edge Case Handling", "Code Quality", "Test Automation"]
+    "Languages": [
+      "Python",
+      "SQL",
+      "C++",
+      "JavaScript"
+    ],
+    "AI/LLM": [
+      "LangChain",
+      "Cohere Embeddings",
+      "FAISS",
+      "RAG",
+      "Semantic Search",
+      "Prompt Workflows",
+      "NLP",
+      "Generative AI"
+    ],
+    "Backend": [
+      "FastAPI",
+      "Flask",
+      "REST APIs",
+      "API Design",
+      "Pydantic",
+      "Authentication",
+      "Async Processing",
+      "Microservices Concepts"
+    ],
+    "Data/Cloud/Tools": [
+      "MySQL",
+      "PostgreSQL",
+      "Query Optimization",
+      "AWS Cloud Foundation",
+      "Git",
+      "GitHub",
+      "Docker",
+      "uv",
+      "Power BI"
+    ]
   }
 }
