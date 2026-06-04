@@ -53,6 +53,14 @@ Generate resume and cover letter from a live job URL:
 python main.py --url "https://jobs.example.com/job/123"
 ```
 
+Run the local website and paste job links in the browser:
+
+```powershell
+python -m job_application_bot.web
+```
+
+Then open `http://127.0.0.1:8765`, paste the job posting URL, and submit. You can also paste the full JD text in the website when a site blocks extraction.
+
 Production package entrypoint:
 
 ```powershell

@@ -123,6 +123,7 @@ VERIFIED_SKILLS = [
     "JavaScript",
     "Bash",
     "Flask",
+    "FastAPI",
     "REST APIs",
     "Microservices",
     "System Design",
@@ -172,6 +173,16 @@ VERIFIED_SKILLS = [
     "Database Optimization",
     "Performance Optimization",
     "Testing",
+    "Generative AI",
+    "OpenAI API",
+    "LangChain",
+    "RAG",
+    "Prompt Engineering",
+    "NLP",
+    "Vector Database",
+    "Pinecone",
+    "Hugging Face Models",
+    "Elasticsearch",
 ]
 
 # ATS Platform selectors

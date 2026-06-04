@@ -116,12 +116,83 @@ def should_generate_gap_project(
     return match_ratio <= max_match_ratio
 
 
+def _dedupe_preserve_order(values: List[str]) -> List[str]:
+    seen = set()
+    result = []
+    for value in values or []:
+        clean = stringify_prompt_value(value).strip()
+        key = clean.lower()
+        if clean and key not in seen:
+            result.append(clean)
+            seen.add(key)
+    return result
+
+
 def _base_profile_summary(base_resume: dict, top_skills: List[str]) -> str:
     """Build a JD-aligned summary without exposing level, tenure, title, or company."""
-    return (
-        "Software Engineer with strong foundations in DSA, system design, and backend/cloud engineering. "
-        "Builds scalable APIs and data pipelines using Python, C++, JavaScript, SQL, AWS, Docker, Kafka, PostgreSQL, testing, and monitoring."
+    skills = _filter_blocked_terms(_dedupe_preserve_order(top_skills))
+    skills_lower = " ".join(skills).lower()
+
+    ai_terms = (
+        "openai",
+        "langchain",
+        "rag",
+        "generative ai",
+        "nlp",
+        "vector",
+        "pinecone",
+        "hugging face",
+        "prompt engineering",
     )
+    cloud_terms = ("aws", "docker", "kubernetes", "cloudwatch", "boto3")
+    data_terms = ("postgresql", "mysql", "redis", "sql", "kafka", "dynamodb")
+
+    if any(term in skills_lower for term in ai_terms):
+        focus = "AI-enabled backend systems"
+        capability = "AI workflows, RAG services, scalable APIs, and data pipelines"
+    elif any(term in skills_lower for term in cloud_terms):
+        focus = "backend/cloud engineering"
+        capability = "scalable APIs, cloud services, microservices, and data pipelines"
+    elif any(term in skills_lower for term in data_terms):
+        focus = "backend and data engineering"
+        capability = "scalable APIs, database-backed services, and data pipelines"
+    else:
+        focus = "backend/cloud engineering"
+        capability = "scalable APIs, event-driven services, and data pipelines"
+
+    preferred_order = [
+        "Python",
+        "FastAPI",
+        "Flask",
+        "OpenAI API",
+        "LangChain",
+        "REST APIs",
+        "PostgreSQL",
+        "AWS Lambda",
+        "AWS EC2",
+        "Docker",
+        "Apache Kafka",
+        "Redis",
+        "SQL",
+        "System Design",
+        "Microservices",
+    ]
+    ordered_skills = [
+        skill for preferred in preferred_order for skill in skills if skill.lower() == preferred.lower()
+    ]
+    ordered_skills.extend(skill for skill in skills if skill not in ordered_skills)
+    summary_skills = ordered_skills[:9] or ["Python", "REST APIs", "SQL", "System Design"]
+
+    if focus == "backend/cloud engineering":
+        first_sentence = (
+            "Software Engineer with strong foundations in DSA, system design, and backend/cloud engineering."
+        )
+    else:
+        first_sentence = (
+            f"Software Engineer focused on {focus} with strong foundations in DSA, system design, and backend/cloud engineering."
+        )
+
+    return f"{first_sentence} Builds {capability} using {', '.join(summary_skills)}."
 
 # Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 # MODELS
@@ -486,8 +557,11 @@ def extract_keywords(text: str) -> List[str]:
         "docker",
         "dynamodb",
         "ec2",
+        "elasticsearch",
+        "fastapi",
         "flask",
         "git",
+        "langchain",
         "iam",
         "java",
         "javascript",
@@ -495,13 +569,19 @@ def extract_keywords(text: str) -> List[str]:
         "kafka",
         "kubernetes",
         "lambda",
+        "llm",
         "mysql",
+        "nlp",
+        "openai",
+        "pinecone",
         "postgresql",
         "python",
+        "rag",
         "rds",
         "redis",
         "s3",
         "sql",
+        "vector",
     }
 
     # Also try to find known capitalized technical terms without treating
@@ -888,7 +968,7 @@ async def tailor_resume(
     
     prompt = PromptTemplate(
         input_variables=["jd_text", "base_summary", "experience_bullets", "verified_skills"],
-        template="""You are a professional resume writer. Your job is to tailor Yash Gupta's resume to a job description.
+        template="""Act as a professional career coach, technical recruiter, and ATS resume expert. Your job is to tailor Yash Gupta's resume to the target job description while keeping every claim truthful and grounded in the verified resume evidence.
 
 CRITICAL CONSTRAINT - ANTI-HALLUCINATION:
 You are STRICTLY FORBIDDEN from adding any skill, tool, technology, or experience NOT in the VERIFIED_SKILLS list below.
@@ -913,15 +993,19 @@ JOB DESCRIPTION:
 {jd_text}
 
 Task:
-1. Write a concise 2 sentence professional summary based on verified skills and project evidence, highlighting only JD keywords that match verified skills.
-2. Rewrite each work experience bullet to emphasize JD-relevant keywords while preserving original truth and metrics. Do not delete work experience records.
-3. Select 10-16 verified skills most relevant to this role, prioritizing exact JD matches and avoiding keyword stuffing.
+1. Write a concise 2 sentence professional summary tailored to the target job title and JD keywords, based only on verified skills, education, roles, projects, and measurable achievements.
+2. Rewrite each work experience bullet to emphasize JD-relevant responsibilities, achievements, and metrics where already present. Do not delete work experience records.
+3. Select 10-16 verified skills most relevant to this role, prioritizing exact JD matches and human-readable ATS keywords while avoiding duplicates and keyword stuffing.
 4. Identify JD keywords that match Yash's verified skills (keywords_matched).
 5. Identify JD requirements that Yash does NOT have (keywords_missing) - be honest about gaps.
 
 IMPORTANT:
 - ONLY use skills from VERIFIED_SKILLS list
 - Do NOT invent tools or technologies Yash doesn't have
+- Every summary sentence and bullet MUST be a complete sentence.
+- Do NOT end any sentence or bullet with dangling words such as through, integrating, ensuring, using, with, for, and, or, to, in, of, by, including, across, or while.
+- Keep each experience bullet under 135 characters where possible so it survives one-page ATS rendering.
+- Prefer strong action verbs, concrete backend/AI/cloud keywords, and existing metrics.
 - When listing skills in the JSON output, you MUST use the exact string formats provided in the VERIFIED_SKILLS list. Do not use generic abbreviations (e.g., use 'AWS EC2' instead of 'AWS') or the validation will fail.
 - The generator will keep every certification and achievement from BASE_RESUME and exactly 3 JD-relevant projects.
 - keywords_missing should be HONEST gaps, not empty

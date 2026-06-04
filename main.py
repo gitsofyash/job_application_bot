@@ -785,15 +785,19 @@ async def orchestrate_application(
             default=RESUME_TAILOR_USE_LLM,
         )
         
-        # OPTIMIZATION: Skip LLM tailoring for very small JDs (< 200 words)
+        # Use the fast path for small JDs only when LLM tailoring is disabled.
         jd_word_count = len(extraction.raw_text.split()) if extraction.raw_text else 0
-        if jd_word_count < 200:
+        if jd_word_count < 200 and not resume_llm_enabled:
             console.print(f"[yellow]⚠️ JD too small ({jd_word_count} words), using fast ATS tailoring[/yellow]\n")
             result.tailoring = build_rule_based_tailored_resume(extraction.raw_text)
         elif not resume_llm_enabled:
             console.print("[cyan]Fast ATS resume tailoring enabled (LLM prompt disabled)[/cyan]\n")
             result.tailoring = build_rule_based_tailored_resume(extraction.raw_text)
         else:
+            if jd_word_count < 200:
+                console.print(
+                    f"[cyan]Short JD detected ({jd_word_count} words), but LLM tailoring was enabled; using LLM.[/cyan]\n"
+                )
             try:
                 tailored = await tailor_resume(extraction.raw_text)
                 result.tailoring = tailored

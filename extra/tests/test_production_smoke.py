@@ -12,6 +12,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from modules.m1_extractor import clean_job_description_text
 from modules.m2_tailor import (
+    ExperienceItem,
     TailoredResume,
     build_rule_based_tailored_resume,
     improve_tailored_resume_for_ats,
@@ -19,12 +20,15 @@ from modules.m2_tailor import (
 )
 from modules.m3_generator import merge_resume_data, render_html_resume
 from modules.m3_generator import trim_summary_text
+from modules.m3_generator import trim_bullet_point, close_sentence
+from modules.m3_generator import DENSITY_PROFILES
 from modules.m5_coverletter import format_resume_context
 from modules.m9_profile_qa import answer_profile_question
 from job_application_bot import APP_NAME, APP_VERSION
 from job_application_bot.cli import run
 from job_application_bot.orchestrator import orchestrate_application as package_orchestrate_application
 from job_application_bot.profile_qa import answer_profile_question as package_answer_profile_question
+from job_application_bot.web import _result_payload, parse_args as parse_web_args
 from main import (
     assess_jd_quality,
     extract_company_name_from_jd,
@@ -62,6 +66,25 @@ def test_package_entrypoint_is_importable() -> None:
     assert_true(callable(run), "package CLI run function is not importable")
     assert_true(callable(package_orchestrate_application), "package orchestrator facade is not importable")
     assert_true(callable(package_answer_profile_question), "package profile Q&A facade is not importable")
+    assert_true(parse_web_args(["--port", "9999"]).port == 9999, "web server args are not parsed")
+
+
+def test_web_result_payload_maps_artifacts() -> None:
+    class DummyResult:
+        job_url = "https://jobs.example.com/role"
+        error = None
+        output_dir = str(PROJECT_ROOT / "output" / "example_20260604_111111")
+        resume_path = str(PROJECT_ROOT / "output" / "example_20260604_111111" / "resume.pdf")
+        markdown_resume_path = None
+        cover_letter_path = None
+        jd_text_path = None
+        ats_score = 91.5
+        duration_seconds = 12.25
+
+    payload = _result_payload(DummyResult())
+    assert_true(payload["success"], "web payload did not mark successful result")
+    assert_true(payload["company"] == "example", "web payload company extraction failed")
+    assert_true(payload["artifacts"][0]["url"].startswith("/artifacts/"), "artifact URL was not exposed")
 
 
 def test_jd_cleaner_removes_noise() -> None:
@@ -234,6 +257,19 @@ def test_summary_generation_stays_general_and_jd_aligned() -> None:
         assert_true(expected in summary_lower, f"summary missing top-MNC positioning: {expected}")
     assert_true("python" in summary_lower, "summary did not include core programming keyword")
 
+    ai_jd = """
+    AI Backend Engineer
+    Requirements: Python, FastAPI, OpenAI API, LangChain, RAG, Vector Database,
+    REST APIs, PostgreSQL, Docker.
+    Responsibilities: build AI workflows, retrieval services, and backend APIs.
+    """
+    ai_tailored = build_rule_based_tailored_resume(ai_jd)
+    ai_summary_lower = ai_tailored.summary.lower()
+    assert_true(ai_tailored.summary != tailored.summary, "AI JD summary did not change from backend summary")
+    assert_true("ai" in ai_summary_lower, "AI JD summary did not include AI focus")
+    assert_true("rag" in ai_summary_lower, "AI JD summary did not include RAG keyword")
+    assert_true("openai api" in ai_summary_lower, "AI JD summary did not include OpenAI API keyword")
+
 
 def test_summary_trimming_never_leaves_dangling_fragment() -> None:
     summary = (
@@ -253,6 +289,54 @@ def test_summary_trimming_never_leaves_dangling_fragment() -> None:
         "builds scalable apis" in full_summary.lower(),
         "summary lost second sentence at normal lengths",
     )
+
+
+def test_resume_bullets_and_skills_are_clean_after_tailoring() -> None:
+    base_resume = load_json("data/base_resume.json")
+    user_profile = load_json("data/user_profile.json")
+    tailored = TailoredResume(
+        summary="Software Engineer focused on AI-enabled backend systems. Builds backend APIs using Python.",
+        experience=[
+            ExperienceItem(
+                original="Develop backend services",
+                tailored="Develop backend services with REST API design using Python, Flask, and FastAPI, integrating",
+            ),
+            ExperienceItem(
+                original="Design containerized microservices",
+                tailored="Design containerized microservices using Docker and ensure scalability through",
+            ),
+        ],
+        skills=["Python", "REST APIs", "REST API", "Logging", "AWS", "AWS EC2"],
+        keywords_matched=["Python", "REST API", "Logging"],
+        keywords_missing=[],
+    )
+    resume_data = merge_resume_data(base_resume, user_profile, tailored)
+    bullets = [
+        bullet
+        for job in resume_data.experience
+        for bullet in job.get("bullets", [])
+    ]
+    for bullet in bullets:
+        assert_true(
+            not bullet.lower().rstrip(".").endswith(("through", "integrating", "ensuring", "using", "with")),
+            f"bullet ended with dangling fragment: {bullet}",
+        )
+        assert_true(bullet[-1] in ".!?", f"bullet is not sentence-complete: {bullet}")
+    assert_true("REST API" not in resume_data.skills, "REST API alias was not normalized")
+    assert_true("Logging" not in resume_data.skills, "Logging alias was not normalized")
+    assert_true(resume_data.skills.count("REST APIs") == 1, "REST APIs appeared more than once")
+
+    trimmed = close_sentence(trim_bullet_point("Built scalable backend services for AI APIs through", 80))
+    assert_true(trimmed == "Built scalable backend services for AI APIs.", "dangling trim cleanup failed")
+
+
+def test_emergency_density_profile_is_actually_compact() -> None:
+    emergency = DENSITY_PROFILES[-1]
+    assert_true(emergency["name"] == "emergency", "last density profile should be emergency")
+    assert_true(emergency["projects"] <= 1, "emergency profile keeps too many projects")
+    assert_true(emergency["bullets_per_job"] <= 3, "emergency profile keeps too many experience bullets")
+    assert_true(emergency["certifications"] <= 2, "emergency profile keeps too many certifications")
+    assert_true(emergency["achievements"] <= 2, "emergency profile keeps too many achievements")
 
 
 def test_profile_links_render_clickable_and_compact() -> None:
@@ -291,6 +375,7 @@ def main() -> None:
     checks = [
         test_env_example_is_clean,
         test_package_entrypoint_is_importable,
+        test_web_result_payload_maps_artifacts,
         test_jd_cleaner_removes_noise,
         test_jd_quality_rejects_incomplete_fetches,
         test_company_name_extraction_from_ats_and_jd,
@@ -300,6 +385,8 @@ def main() -> None:
         test_gap_project_only_for_large_resume_gap,
         test_summary_generation_stays_general_and_jd_aligned,
         test_summary_trimming_never_leaves_dangling_fragment,
+        test_resume_bullets_and_skills_are_clean_after_tailoring,
+        test_emergency_density_profile_is_actually_compact,
         test_profile_links_render_clickable_and_compact,
         test_profile_qa_grounded_answer,
     ]

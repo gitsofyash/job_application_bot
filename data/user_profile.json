@@ -38,15 +38,18 @@
  ],
   "industry_preferences": [
     "Software Product Engineering",
+    "Big Tech",
+    "Consumer Internet",
+    "Enterprise Software",
     "Cloud Infrastructure",
     "SaaS",
+    "Developer Platforms",
     "FinTech",
     "AI/ML",
-    "Cybersecurity",
     "E-commerce",
+    "Cybersecurity",
     "Healthcare Technology",
-    "EdTech",
-    "Gaming"
+    "EdTech"
   ],
   "form_field_mappings": {
     "first_name": "Yash",

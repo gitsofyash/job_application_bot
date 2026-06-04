@@ -68,7 +68,13 @@ from config.settings import (
     RESUME_TAILOR_USE_LLM,
     COVER_LETTER_USE_LLM,
 )
-from modules.m2_tailor import TailoredResume, ExperienceItem, extract_keywords, invoke_cohere_json
+from modules.m2_tailor import (
+    TailoredResume,
+    ExperienceItem,
+    extract_keywords,
+    invoke_cohere_json,
+    _base_profile_summary,
+)
 from utils.url_parser import fix_encoding_issues, create_resume_filename
 
 console = Console()
@@ -111,10 +117,7 @@ def filter_resume_seniority_terms(values: Iterable[str]) -> list[str]:
 
 
 def base_profile_summary(base_resume: dict, user_profile: dict, selected_skills: Iterable[str]) -> str:
-    return (
-        "Software Engineer with strong foundations in DSA, system design, and backend/cloud engineering. "
-        "Builds scalable APIs and data pipelines using Python, C++, JavaScript, SQL, AWS, Docker, Kafka, PostgreSQL, testing, and monitoring."
-    )
+    return _base_profile_summary(base_resume, list(selected_skills or []))
 
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # MODELS
@@ -168,8 +171,8 @@ def trim_bullet_point(bullet: str, max_length: int = 120) -> str:
     else:
         trimmed = bullet[:max_length]
     
-    # Clean up trailing punctuation/whitespace
-    trimmed = trimmed.rstrip(" ,;:-")
+    # Clean up trailing punctuation/whitespace and dangling connector words.
+    trimmed = clean_dangling_resume_fragment(trimmed)
     
     return (trimmed if trimmed else bullet[:max_length]).rstrip()
 
@@ -206,12 +209,33 @@ def trim_summary_text(summary: str, max_length: int = 320) -> str:
 
 def close_sentence(text: str) -> str:
     """Ensure compact resume prose does not end mid-thought."""
-    text = text.strip()
+    text = clean_dangling_resume_fragment(text)
     if text.endswith("distributed system"):
         text = f"{text}s"
     if text and text[-1] not in ".!?":
         return f"{text}."
     return text
+
+
+def clean_dangling_resume_fragment(text: str) -> str:
+    """Remove incomplete trailing phrases left by model output or length trims."""
+    cleaned = fix_encoding_issues(str(text or "")).strip()
+    cleaned = re.sub(r"\s+", " ", cleaned).rstrip(" ,;:-")
+
+    dangling_patterns = [
+        r"(?i)\s+(with|using|via|for|and|or|to|in|of|by|through|integrating|ensuring|including|across|while)$",
+        r"(?i)\s+through\s*$",
+        r"(?i)\s+integrating\s*$",
+        r"(?i)\s+ensuring\s*$",
+        r"(?i)\s+with\s*$",
+        r"(?i)\s+using\s*$",
+    ]
+    previous = None
+    while previous != cleaned:
+        previous = cleaned
+        for pattern in dangling_patterns:
+            cleaned = re.sub(pattern, "", cleaned).rstrip(" ,;:-")
+    return cleaned
 
 
 def flatten_base_skills(base_resume: Dict[str, Any]) -> list[str]:
@@ -301,8 +325,17 @@ def expand_skills_for_jd(
 
     ordered = []
     seen = set()
+    skill_aliases = {
+        "rest api": "REST APIs",
+        "api": "REST APIs",
+        "logging": "Logging Systems",
+        "monitoring": "Monitoring Tools",
+        "authentication": "JWT Authentication",
+        "aws": "AWS EC2",
+    }
 
     def add_skill(skill: str, allow_dynamic: bool = False) -> None:
+        skill = skill_aliases.get(str(skill).strip().lower(), str(skill).strip())
         key = skill.lower()
         if key not in seen and key in base_lookup:
             ordered.append(base_lookup[key])
@@ -382,7 +415,7 @@ def prioritize_resume_content(
             job["bullets"] = job["bullets"][:max_bullets_per_job]
             
         if "bullets" in job:
-            job["bullets"] = [trim_bullet_point(b, max_length=140) for b in job["bullets"]]
+            job["bullets"] = [close_sentence(trim_bullet_point(b, max_length=140)) for b in job["bullets"]]
     
     # JD-based project selection: keep exactly N projects when available
     if jd_keywords and resume_data.projects:
@@ -907,7 +940,7 @@ def merge_resume_data(
     # If tailored resume provided, update bullets
     if tailored_resume:
         flat_bullets = [
-            fix_encoding_issues(exp_item.tailored)
+            close_sentence(exp_item.tailored)
             for exp_item in tailored_resume.experience
             if exp_item.tailored
         ]
@@ -923,7 +956,7 @@ def merge_resume_data(
     # Fix encoding in experience bullets
     for job in experience:
         if "bullets" in job:
-            job["bullets"] = [fix_encoding_issues(b) for b in job["bullets"]]
+            job["bullets"] = [close_sentence(b) for b in job["bullets"]]
         if "company" in job:
             job["company"] = fix_encoding_issues(job["company"])
         if "title" in job:
@@ -942,7 +975,11 @@ def merge_resume_data(
     selected_skills = tailored_resume.skills if tailored_resume else flatten_base_skills(base_resume)
     selected_skills = expand_skills_for_jd(selected_skills, base_resume, tailored_resume)
     selected_skills = filter_resume_seniority_terms(selected_skills)
-    summary = base_profile_summary(base_resume, user_profile, selected_skills)
+    summary = (
+        fix_encoding_issues(tailored_resume.summary)
+        if tailored_resume and tailored_resume.summary
+        else base_profile_summary(base_resume, user_profile, selected_skills)
+    )
     summary = fix_encoding_issues(summary)
 
     linkedin = normalize_profile_url(
@@ -1060,7 +1097,9 @@ def build_plain_text_resume(resume_data: ResumeData) -> str:
         lines.extend(["", "PROJECTS"])
         for project in resume_data.projects:
             technologies = ", ".join(project.get("technologies", []))
-            lines.append(f"{project.get('title', '')} | {technologies}")
+            lines.append(f"{project.get('title', '')} | {project.get('date', '')}")
+            if technologies:
+                lines.append(f"Technologies: {technologies}")
             if project.get("description"):
                 lines.append(project["description"])
             for bullet in project.get("bullets", []):
@@ -1411,25 +1450,25 @@ DENSITY_PROFILES = [
     },
     {
         "name": "compact-full",
-        "summary_length": 240,
+        "summary_length": 220,
         "experience_items": 2,
         "bullets_per_job": 4,
         "projects": 2,
         "bullets_per_project": 1,
         "skills": 16,
-        "certifications": 999,
-        "achievements": 999,
+        "certifications": 3,
+        "achievements": 3,
     },
     {
         "name": "emergency",
-        "summary_length": 240,
+        "summary_length": 190,
         "experience_items": 2,
-        "bullets_per_job": 4,
-        "projects": 2,
+        "bullets_per_job": 3,
+        "projects": 1,
         "bullets_per_project": 1,
-        "skills": 14,
-        "certifications": 999,
-        "achievements": 999,
+        "skills": 12,
+        "certifications": 2,
+        "achievements": 2,
     },
 ]
 
@@ -1700,9 +1739,7 @@ async def generate_resume_pdf(
         console.log(f"[green]Strict one-page check passed using '{selected_profile}' profile[/green]")
     except Exception as e:
         console.log(f"[red]âœ— PDF generation failed: {e}[/red]")
-        if not DEBUG:
-            raise
-        # In debug mode, continue with HTML fallback
+        raise
     
     console.log(f"[green]âœ“ Resume generated: {output_path}[/green]")
     console.log(f"[green]âœ“ Stored as company-specific file (no overwrites)[/green]")
