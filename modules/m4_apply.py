@@ -38,7 +38,7 @@ from enum import Enum
 
 from playwright.async_api import async_playwright, Page, Browser
 from pydantic import BaseModel, Field
-from rich.console import Console
+from utils.console import SafeConsole as Console
 from tenacity import (
     retry,
     stop_after_attempt,

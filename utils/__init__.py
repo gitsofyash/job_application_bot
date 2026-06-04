@@ -9,6 +9,7 @@ from .url_parser import (
     create_resume_filename,
     create_cover_letter_filename,
 )
+from .console import SafeConsole
 
 __all__ = [
     "extract_company_name",
@@ -16,4 +17,5 @@ __all__ = [
     "fix_encoding_issues",
     "create_resume_filename",
     "create_cover_letter_filename",
+    "SafeConsole",
 ]

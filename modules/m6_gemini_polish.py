@@ -9,7 +9,7 @@ import asyncio
 import json
 from typing import Any
 
-from rich.console import Console
+from utils.console import SafeConsole as Console
 
 from config.settings import (
     ENABLE_GEMINI_POLISH,

@@ -29,7 +29,7 @@ from urllib.parse import quote_plus
 
 import httpx
 import feedparser
-from rich.console import Console
+from utils.console import SafeConsole as Console
 
 try:
     from config.settings import OUTPUT_DIR, USER_AGENT

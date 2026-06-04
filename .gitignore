@@ -207,3 +207,4 @@ npm-debug.log
 !templates/
 !utils/
 !data/
+extra/docs/SETUP_AND_SHARING.md

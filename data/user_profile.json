@@ -12,6 +12,13 @@
   },
   "linkedin": "linkedin/yash-gupta2601",
   "github": "github/gitsofyash",
+  "gssoc_profile": "https://gssoc.girlscript.org/profile/76a55d02-90b7-43d6-a2cc-9bedf1b445a8",
+  "open_source_contributions": {
+    "program": "GSSoC 2026",
+    "role": "Open Source Contributor",
+    "merged_prs": 25,
+    "profile_url": "https://gssoc.girlscript.org/profile/76a55d02-90b7-43d6-a2cc-9bedf1b445a8"
+  },
   "currently_employed": true,
   "notice_period_days": 0,
   "willing_to_relocate": true,
@@ -31,15 +38,18 @@
  ],
   "industry_preferences": [
     "Software Product Engineering",
+    "Big Tech",
+    "Consumer Internet",
+    "Enterprise Software",
     "Cloud Infrastructure",
     "SaaS",
+    "Developer Platforms",
     "FinTech",
     "AI/ML",
-    "Cybersecurity",
     "E-commerce",
+    "Cybersecurity",
     "Healthcare Technology",
-    "EdTech",
-    "Gaming"
+    "EdTech"
   ],
   "form_field_mappings": {
     "first_name": "Yash",

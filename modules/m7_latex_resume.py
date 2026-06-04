@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 from typing import Any, Optional
 
-from rich.console import Console
+from utils.console import SafeConsole as Console
 
 from config.settings import OUTPUT_DIR
 from modules.m2_tailor import TailoredResume, extract_keywords

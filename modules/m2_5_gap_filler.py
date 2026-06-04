@@ -11,7 +11,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from rich.console import Console
+from utils.console import SafeConsole as Console
 
 from config.settings import COHERE_API_KEY, COHERE_MODEL, PROJECT_ROOT
 

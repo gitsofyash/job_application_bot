@@ -31,15 +31,18 @@
   ],
   "industry_preferences": [
     "Software Product Engineering",
+    "Big Tech",
+    "Consumer Internet",
+    "Enterprise Software",
     "Cloud Infrastructure",
     "SaaS",
+    "Developer Platforms",
     "FinTech",
     "AI/ML",
-    "Cybersecurity",
     "E-commerce",
+    "Cybersecurity",
     "Healthcare Technology",
-    "EdTech",
-    "Gaming"
+    "EdTech"
   ],
   "form_field_mappings": {
     "first_name": "Yash",
@@ -59,7 +62,7 @@
     "linkedin": "linkedin/yash-gupta2601",
     "github": "github/gitsofyash"
   },
-  "summary": "Software Engineer with strong foundations in DSA, system design, and backend/cloud engineering. Builds scalable APIs and data pipelines using Python, C++, JavaScript, SQL, AWS, Docker, Kafka, PostgreSQL, testing, and monitoring.",
+  "summary": "Software Engineer with strong foundations in DSA, system design, backend/cloud engineering, and AI-enabled developer tooling. Builds scalable APIs, event-driven services, and data pipelines using Python, C++, JavaScript, SQL, AWS, Docker, Kafka, PostgreSQL, testing, and observability for product and enterprise platforms.",
   "education": [
     {
       "degree": "B.Tech in Computer Science & Business Systems",
@@ -98,7 +101,7 @@
   "projects": [
     {
       "title": "Distributed File Deduplication & Metadata Service on AWS",
-      "date": "Nov 2024 – Present",
+      "date": "Nov 2025 – Feb 2026",
       "description": "Enterprise-grade hash-based file deduplication service with secure REST APIs and scalable metadata management",
       "technologies": ["Python", "AWS Lambda", "AWS API Gateway", "AWS S3", "AWS DynamoDB", "AWS IAM", "REST APIs", "Async/Await"],
       "bullets": [
@@ -111,7 +114,7 @@
     },
     {
       "title": "CloudMon – Real-Time AWS Resource Monitor Dashboard",
-      "date": "Aug 2024 – Oct 2024",
+      "date": "Aug 2025 – Oct 2025",
       "description": "Scalable cloud resource usage dashboard with automated cost alerts and ML-based optimization recommendations",
       "technologies": ["Python", "Flask", "AWS EC2", "AWS S3", "AWS RDS", "Boto3", "Docker", "PostgreSQL", "Jinja2"],
       "bullets": [
@@ -124,11 +127,11 @@
     },
     {
       "title": "Real-Time Data Processing Pipeline for Sensor Telemetry",
-      "date": "Mar 2024 – Jul 2024",
-      "description": "High-throughput data processing pipeline handling vehicle telemetry with anomaly detection and alerting",
-      "technologies": ["Python", "Apache Kafka", "PostgreSQL", "Redis", "Unit Testing", "CAN Bus"],
+      "date": "Mar 2025 – Jul 2025",
+      "description": "High-throughput data processing pipeline handling real-time telemetry events with anomaly detection and alerting",
+      "technologies": ["Python", "Apache Kafka", "PostgreSQL", "Redis", "Unit Testing", "Event-Driven Architecture"],
       "bullets": [
-        "Architected Kafka consumer application processing 10,000+ messages/second from distributed vehicle sensors",
+        "Architected Kafka consumer application processing 10,000+ messages/second from distributed telemetry producers",
         "Implemented anomaly detection using statistical methods and real-time alerting for out-of-threshold sensor readings",
         "Optimized database queries reducing query latency from 5s to 500ms through strategic indexing and query optimization",
         "Built comprehensive test suite with 100+ unit tests using Python unittest framework, achieving 92% code coverage"
@@ -195,31 +198,32 @@
       ]
     },
     {
-      "title": "Advanced Driver Assistance System (ADAS) Prototype with Sensor Fusion",
+      "title": "Edge Computer Vision Sensor Fusion Prototype",
       "date": "Dec 2025 – Mar 2026",
-      "description": "Physical ADAS prototype for real-time obstacle detection and automated emergency braking using radar-camera fusion",
-      "technologies": ["Python", "C++", "NVIDIA Jetson Orin NX", "77GHz Radar", "Computer Vision", "CAN Bus"],
+      "description": "Edge AI prototype for real-time obstacle detection using multi-sensor fusion and optimized computer vision inference",
+      "technologies": ["Python", "C++", "NVIDIA Jetson Orin NX", "Computer Vision", "Sensor Fusion", "Edge AI"],
       "bullets": [
-        "Engineered a modular late-fusion pipeline combining 77GHz radar telemetry and camera feeds for robust obstacle detection on an NVIDIA Jetson Orin NX",
-        "Interfaced with vehicle CAN bus and OBD-II ports to extract real-time speed and telemetry data for situational awareness",
-        "Designed and integrated physical linear actuator control logic to simulate Autonomous Emergency Braking (AEB) under predefined collision thresholds",
+        "Engineered a modular late-fusion pipeline combining sensor telemetry and camera feeds for robust obstacle detection on an NVIDIA Jetson Orin NX",
+        "Implemented real-time telemetry ingestion and state estimation logic for low-latency situational awareness",
+        "Designed control-flow logic to trigger safety alerts under predefined risk thresholds",
         "Optimized YOLO models for real-time processing on edge hardware, ensuring sub-50ms inference latency"
       ]
     },
     {
-      "title": "Driver Monitoring System (DMS) for Drowsiness Detection",
+      "title": "Real-Time Computer Vision Monitoring System",
       "date": "Feb 2026",
-      "description": "Real-time computer vision system deployed on edge hardware to detect driver fatigue and distraction",
+      "description": "Real-time computer vision system deployed on edge hardware to detect attention and fatigue signals",
       "technologies": ["Python", "MediaPipe", "Computer Vision", "Picamera2", "Edge Computing"],
       "bullets": [
         "Developed a lightweight Python application utilizing MediaPipe to track complex facial landmarks and calculate the Eye Aspect Ratio (EAR) in real-time",
         "Optimized inference performance for edge devices using Picamera2, ensuring low-latency video stream processing",
-        "Implemented threshold-based alerting mechanisms to trigger auditory and visual warnings upon detecting sustained signs of driver fatigue",
+        "Implemented threshold-based alerting mechanisms to trigger warnings upon detecting sustained signs of fatigue or distraction",
         "Architected the system to run entirely offline, ensuring privacy and reliability in variable network conditions"
       ]
     }
   ],
   "achievements": [
+    "Open Source Contributor, GSSoC 2026 - Successfully merged 25 PRs",
     "Runner-up, Hackbyte Hackathon 2023 – Developed innovative solution achieving 90%+ accuracy, recognized among 500+ participants",
     "Shortlisted Round 2, Smart India Hackathon 2023 – Advanced to final round as part of top 1% among 100,000+ teams nationwide",
     "Student Scholar, Gyan Ganga Institute 2021-2023 – Maintained 8.5+ CGPA for consecutive two years",
@@ -232,13 +236,13 @@
     "Cisco Cybersecurity Essentials – Network security and threat mitigation strategies"
   ],
   "skills": {
-    "languages": ["Python", "C++", "SQL", "Embedded C", "JavaScript", "Bash"],
-    "backend": ["REST APIs", "Microservices", "System Design", "Data Structures", "Algorithms", "API Design"],
+    "languages": ["Python", "C++", "SQL", "JavaScript", "Bash"],
+    "backend": ["REST APIs", "Microservices", "System Design", "Data Structures", "Algorithms", "API Design", "Distributed Systems", "Authentication", "Caching", "Scalability", "Object-Oriented Design", "Asynchronous Processing", "Event-Driven Architecture", "High-Throughput Services"],
     "cloud": ["AWS EC2", "AWS S3", "AWS Lambda", "AWS RDS", "AWS DynamoDB", "AWS API Gateway", "AWS IAM", "AWS CloudWatch", "Boto3"],
-    "databases": ["PostgreSQL", "MySQL", "AWS DynamoDB", "Redis", "SQLAlchemy"],
-    "tools": ["Git", "Docker", "Debugging Tools", "Logging Systems", "Monitoring Tools", "Postman", "GitHub"],
-    "frameworks": ["Flask", "JWT Authentication", "SQLAlchemy ORM", "Jinja2"],
-    "domains": ["Cloud Cost Optimization", "Sensor Fusion", "CAN Bus protocols", "ASPICE compliance", "Production Systems", "Real-time Data Processing", "Embedded Systems", "System Reliability"],
-    "methodologies": ["Agile/Scrum", "SDLC", "TDD", "CI/CD", "Edge Case Handling", "Code Quality"]
+    "databases": ["PostgreSQL", "MySQL", "AWS DynamoDB", "Redis", "SQLAlchemy", "Database Design", "Query Optimization"],
+    "tools": ["Git", "GitHub", "Docker", "Linux", "CI/CD", "Apache Kafka", "Postman", "Debugging Tools", "Logging Systems", "Monitoring Tools", "Observability"],
+    "frameworks": ["Flask", "FastAPI", "JWT Authentication", "SQLAlchemy ORM", "Jinja2"],
+    "domains": ["Backend Engineering", "Cloud Infrastructure", "SaaS Platforms", "E-commerce Systems", "Consumer Internet Platforms", "Enterprise Software", "Developer Tools", "Production Systems", "Backend Automation", "Real-time Data Processing", "System Reliability", "Performance Optimization"],
+    "methodologies": ["Agile/Scrum", "SDLC", "TDD", "CI/CD", "Code Reviews", "Problem Solving", "Edge Case Handling", "Code Quality", "Test Automation"]
   }
 }

@@ -39,7 +39,7 @@ sys.dont_write_bytecode = True
 os.environ.setdefault("PYTHONDONTWRITEBYTECODE", "1")
 
 from rich.markup import escape
-from rich.console import Console
+from utils.console import SafeConsole as Console
 from rich.table import Table
 from rich.traceback import install
 
@@ -132,6 +132,16 @@ class PipelineResult:
     duration_seconds: float = 0.0
 
 
+@dataclass
+class JDQualityReport:
+    """Heuristic confidence report for fetched job-description text."""
+    word_count: int
+    signal_count: int
+    noise_count: int
+    is_acceptable: bool
+    issues: list[str]
+
+
 def _manual_extraction_result(
     jd_text: str,
     source: str = "manual",
@@ -203,6 +213,147 @@ def prompt_enable_llm_tailoring(prompt_text: str, default: bool = False) -> bool
         print("Please enter 'y' or 'n'.")
 
 
+def prompt_yes_no(prompt_text: str, default: bool = False) -> bool:
+    """Ask a yes/no question in interactive CLI sessions."""
+    if not sys.stdin.isatty():
+        return default
+
+    default_hint = "Y/n" if default else "y/N"
+    while True:
+        try:
+            raw_response = input(f"{prompt_text} [{default_hint}] ")
+        except EOFError:
+            return default
+        response = raw_response.strip().lower()
+        if not response:
+            return default
+        if response in {"y", "yes"}:
+            return True
+        if response in {"n", "no"}:
+            return False
+        print("Please enter 'y' or 'n'.")
+
+
+def assess_jd_quality(jd_text: str) -> JDQualityReport:
+    """Score whether the fetched text looks like a complete, useful JD."""
+    text = fix_encoding_issues(jd_text or "").strip()
+    lower = text.lower()
+    word_count = len(text.split())
+    signal_terms = (
+        "responsibilities",
+        "requirements",
+        "qualifications",
+        "minimum qualifications",
+        "basic qualifications",
+        "preferred qualifications",
+        "what you'll do",
+        "what you will do",
+        "about the role",
+        "job description",
+        "job summary",
+        "experience",
+        "skills",
+        "software",
+        "engineer",
+    )
+    noise_terms = (
+        "similar jobs",
+        "job alert",
+        "create alert",
+        "privacy policy",
+        "cookie",
+        "terms of use",
+        "sign in",
+        "share job",
+        "back to top",
+    )
+    signal_count = sum(1 for term in signal_terms if term in lower)
+    noise_count = sum(1 for term in noise_terms if term in lower)
+    issues = []
+
+    if word_count < 120:
+        issues.append(f"too short ({word_count} words)")
+    if signal_count < 3:
+        issues.append("missing role/responsibility/qualification signals")
+    if noise_count >= 3:
+        issues.append("contains too much navigation or career-site noise")
+    if re.search(r"(?i)\b(apply now|share job|similar jobs)\b", text) and word_count < 220:
+        issues.append("looks like a listing shell instead of the full JD")
+
+    return JDQualityReport(
+        word_count=word_count,
+        signal_count=signal_count,
+        noise_count=noise_count,
+        is_acceptable=not issues,
+        issues=issues,
+    )
+
+
+def confirm_or_replace_jd(extraction: ExtractionResult, quality: JDQualityReport) -> Optional[ExtractionResult]:
+    """Let an interactive user confirm a fetched JD preview or paste the correct JD."""
+    if not sys.stdin.isatty():
+        return extraction if quality.is_acceptable else None
+
+    console.print(
+        f"[cyan]JD quality check:[/cyan] {quality.word_count} words, "
+        f"{quality.signal_count} JD signals, {quality.noise_count} noise signals"
+    )
+    if quality.issues:
+        console.print(f"[yellow]Potential issue: {', '.join(quality.issues)}[/yellow]")
+
+    preview = extraction.raw_text[:900].strip()
+    console.print("[bold]Fetched JD preview:[/bold]")
+    console.print(f"[dim]{escape(preview)}{'...' if len(extraction.raw_text) > 900 else ''}[/dim]\n")
+
+    prompt = "Does this look like the correct complete JD?"
+    if quality.is_acceptable and prompt_yes_no(prompt, default=True):
+        return extraction
+
+    if not quality.is_acceptable:
+        console.print("[yellow]This JD may be incomplete. Please paste the full JD to continue.[/yellow]")
+    elif prompt_yes_no("Do you want to paste a corrected JD?", default=False):
+        pass
+    else:
+        return extraction
+
+    manual_text = prompt_for_manual_jd()
+    if manual_text:
+        return _manual_extraction_result(
+            manual_text,
+            source=f"manual replacement for {extraction.url}",
+            screenshot_path=extraction.screenshot_path,
+        )
+    return extraction if quality.is_acceptable else None
+
+
+def prompt_for_company_name_if_uncertain(company_name: str) -> str:
+    """Ask for the company name when URL/JD extraction only found a generic fallback."""
+    safe_company = sanitize_filename(company_name or "")
+    uncertain_names = {
+        "company",
+        "job",
+        "job-posting",
+        "manual-jd",
+        "linkedin-job",
+        "unknown",
+        "careers",
+        "jobs",
+    }
+    if safe_company not in uncertain_names or not sys.stdin.isatty():
+        return safe_company or "job-posting"
+
+    while True:
+        try:
+            raw_response = input("Company name could not be identified. Enter company name for this resume run: ")
+        except EOFError:
+            return safe_company or "job-posting"
+
+        candidate = sanitize_filename(raw_response.strip())
+        if candidate and candidate not in uncertain_names:
+            return candidate
+        print("Please enter the actual company name, for example: Google, Microsoft, Stripe.")
+
+
 def save_job_description_artifact(
     extraction: ExtractionResult,
     company_name: str,
@@ -219,19 +370,57 @@ def save_job_description_artifact(
 def extract_company_name_from_jd(jd_text: str, fallback: str = "job-posting") -> str:
     """Best-effort company extraction from JD text with URL-derived fallback."""
     text = fix_encoding_issues(jd_text or "")
+    lines = [line.strip(" -|") for line in text.splitlines() if line.strip()]
+    stopwords = {
+        "software engineer",
+        "job description",
+        "responsibilities",
+        "requirements",
+        "qualifications",
+        "minimum qualifications",
+        "basic qualifications",
+        "preferred qualifications",
+        "about the job",
+        "about us",
+        "overview",
+        "apply now",
+    }
+
+    def clean_candidate(candidate: str) -> Optional[str]:
+        candidate = re.sub(r"\s+", " ", candidate).strip(" .,-:|")
+        candidate = re.sub(r"(?i)\s+(careers|jobs|job posting)$", "", candidate).strip()
+        lower = candidate.lower()
+        if not candidate or lower in stopwords:
+            return None
+        if len(candidate) > 70 or len(candidate.split()) > 6:
+            return None
+        if any(term in lower for term in ("engineer", "developer", "manager", "intern", "remote", "full-time")):
+            return None
+        if not re.search(r"[A-Za-z]", candidate):
+            return None
+        return candidate
+
     patterns = [
-        r"(?im)^\s*company\s*[:\-]\s*([A-Z][A-Za-z0-9&.,' \-]{2,60})\s*$",
-        r"(?im)^\s*about\s+([A-Z][A-Za-z0-9&.,' \-]{2,60})\s*$",
-        r"(?i)\bat\s+([A-Z][A-Za-z0-9&.' \-]{2,50})\s+(?:we|is|are|you will)",
-        r"(?i)([A-Z][A-Za-z0-9&.' \-]{2,50})\s+is\s+(?:hiring|looking for|seeking)",
+        r"(?im)^\s*(?:company|employer|organization)\s*[:\-]\s*([A-Z][A-Za-z0-9&.,' \-]{2,70})\s*$",
+        r"(?im)^\s*about\s+([A-Z][A-Za-z0-9&.,' \-]{2,70})\s*$",
+        r"(?i)\bjoin\s+([A-Z][A-Za-z0-9&.' \-]{2,50})\b",
+        r"(?i)\bat\s+([A-Z][A-Za-z0-9&.' \-]{2,50})\s+(?:we|you|our|is|are)",
+        r"(?i)([A-Z][A-Za-z0-9&.' \-]{2,50})\s+is\s+(?:hiring|looking for|seeking|a\b|an\b)",
     ]
-    stopwords = {"software engineer", "job description", "responsibilities", "requirements"}
     for pattern in patterns:
         match = re.search(pattern, text)
         if match:
-            candidate = match.group(1).strip(" .,-")
-            if candidate.lower() not in stopwords:
+            candidate = clean_candidate(match.group(1))
+            if candidate:
                 return sanitize_filename(candidate)
+
+    for line in lines[:30]:
+        match = re.match(r"(?i)^([A-Z][A-Za-z0-9&.' \-]{2,50})\s+\|\s+.+$", line)
+        if match:
+            candidate = clean_candidate(match.group(1))
+            if candidate:
+                return sanitize_filename(candidate)
+
     return sanitize_filename(fallback)
 
 
@@ -258,6 +447,172 @@ def move_artifact_to_output_dir(path_text: Optional[str], output_dir: Path) -> O
     destination = output_dir / source.name
     source.replace(destination)
     return str(destination)
+
+
+def add_learning_skills_to_tailoring(
+    tailoring: Optional[TailoredResume],
+    technologies: list[str],
+    covered_keywords: list[str],
+) -> Optional[TailoredResume]:
+    """Add gap-project technologies as independent-learning skills for the next render."""
+    if not tailoring:
+        return tailoring
+
+    updated = tailoring.model_copy(deep=True)
+    existing_skills = list(updated.skills or [])
+    seen_skills = {skill.lower() for skill in existing_skills}
+
+    for technology in technologies:
+        key = technology.lower()
+        if key not in seen_skills:
+            existing_skills.insert(min(6, len(existing_skills)), technology)
+            seen_skills.add(key)
+
+    covered_keys = {keyword.lower() for keyword in covered_keywords}
+    for keyword in covered_keywords:
+        if keyword not in updated.keywords_matched:
+            updated.keywords_matched.append(keyword)
+
+    updated.skills = existing_skills[:24]
+    updated.keywords_missing = [
+        keyword
+        for keyword in (updated.keywords_missing or [])
+        if keyword.lower() not in covered_keys
+    ]
+    return updated
+
+
+def gap_project_covers_keywords(gap_project: dict, missing_keywords: list[str]) -> list[str]:
+    """Return missing keywords that are explicitly represented in the gap project."""
+    project_text = " ".join(
+        [
+            str(gap_project.get("title", "")),
+            str(gap_project.get("description", "")),
+            " ".join(str(tech) for tech in gap_project.get("technologies", [])),
+            " ".join(str(bullet) for bullet in gap_project.get("bullets", [])),
+        ]
+    ).lower()
+    covered = []
+    for keyword in missing_keywords:
+        normalized = str(keyword).strip().lower()
+        if len(normalized) >= 3 and normalized in project_text:
+            covered.append(keyword)
+    return covered
+
+
+def gap_project_duration() -> str:
+    """Use a fixed recent learning-project duration for resume display."""
+    return "Jan 2026 - Mar 2026"
+
+
+def compact_gap_project_text(text: str, max_length: int = 128) -> str:
+    """Keep generated gap-project resume text short and sentence-complete."""
+    cleaned = re.sub(r"\s+", " ", str(text or "")).strip(" -")
+    if not cleaned:
+        return ""
+
+    if len(cleaned) > max_length:
+        split_match = re.search(
+            r"(?i),\s+(?:with|including|and)\s+(?:containerization|multi-cloud|integration|deployment|orchestration)\b",
+            cleaned,
+        )
+        if split_match and split_match.start() > 60:
+            cleaned = cleaned[: split_match.start()].rstrip(" ,;:-")
+
+    sentence_match = re.search(r"^(.+?[.!?])(?:\s|$)", cleaned)
+    if sentence_match:
+        cleaned = sentence_match.group(1).strip()
+
+    if len(cleaned) > max_length:
+        clipped = cleaned[:max_length].rstrip()
+        last_space = clipped.rfind(" ")
+        if last_space > max_length * 0.65:
+            clipped = clipped[:last_space]
+        cleaned = clipped.rstrip(" ,;:-")
+
+    cleaned = re.sub(
+        r"(?i)\s+(with|using|via|for|and|or|to|in|of|by)$",
+        "",
+        cleaned,
+    ).rstrip(" ,;:-")
+    if cleaned and cleaned[-1] not in ".!?":
+        cleaned = f"{cleaned}."
+    return cleaned
+
+
+def compact_gap_project_bullet(description: str, technologies: list[str]) -> str:
+    """Create a non-duplicative, complete bullet for generated gap projects."""
+    useful_technologies = [
+        tech
+        for tech in technologies
+        if tech.lower() not in {"python", "aws lambda", "api gateway", "dynamodb"}
+    ][:5]
+    if useful_technologies:
+        return compact_gap_project_text(
+            f"Added focused proof-of-concept coverage for {', '.join(useful_technologies)}.",
+            max_length=118,
+        )
+    return compact_gap_project_text(description, max_length=118)
+
+
+async def add_gap_project_to_resume_data(
+    missing_keywords: list[str],
+    resume_data_dict: Optional[dict],
+) -> tuple[Optional[dict], list[str], list[str], Optional[dict]]:
+    """
+    Generate and insert an Independent Learning project into resume data.
+
+    Returns updated resume data, project technologies, covered keywords, and raw
+    gap project metadata.
+    """
+    gap_project = await generate_gap_project(missing_keywords)
+    if not gap_project:
+        return resume_data_dict, [], [], None
+
+    technologies = []
+    seen_technologies = set()
+    for tech in gap_project.get("technologies", []):
+        technology = str(tech).strip()
+        key = technology.lower()
+        if technology and key not in seen_technologies:
+            technologies.append(technology)
+            seen_technologies.add(key)
+
+    if resume_data_dict is None:
+        with open(BASE_RESUME_PATH, "r", encoding="utf-8") as f:
+            updated_resume_data = json.load(f)
+    else:
+        updated_resume_data = json.loads(json.dumps(resume_data_dict))
+
+    project_title = str(gap_project.get("title", "Gap Bridging Project")).strip()
+    if "(Independent Learning)" not in project_title:
+        project_title = f"{project_title} (Independent Learning)"
+
+    project_description = compact_gap_project_text(gap_project.get("description", ""))
+    if not project_description:
+        project_description = compact_gap_project_text(
+            f"Built a focused project using {', '.join(technologies[:6])}."
+        )
+
+    resume_project = {
+        "title": project_title,
+        "date": gap_project_duration(),
+        "description": project_description,
+        "technologies": technologies,
+        "bullets": [compact_gap_project_bullet(project_description, technologies)],
+    }
+
+    projects = updated_resume_data.setdefault("projects", [])
+    existing_titles = {
+        str(project.get("title", "")).strip().lower()
+        for project in projects
+        if isinstance(project, dict)
+    }
+    if project_title.lower() not in existing_titles:
+        projects.insert(0, resume_project)
+
+    covered_keywords = gap_project_covers_keywords(gap_project, missing_keywords)
+    return updated_resume_data, technologies, covered_keywords, gap_project
 
 
 async def orchestrate_application(
@@ -368,13 +723,28 @@ async def orchestrate_application(
                 )
                 return result
 
-        if extraction.word_count < 80:
+        quality = assess_jd_quality(extraction.raw_text)
+        if manual_jd_text:
             console.print(
-                f"[yellow]JD is short ({extraction.word_count} words). "
-                "Add a fuller JD with --jd-file or --jd-text for better ATS matching.[/yellow]"
+                f"[cyan]Manual JD quality:[/cyan] {quality.word_count} words, "
+                f"{quality.signal_count} JD signals"
             )
+            if quality.issues:
+                console.print(f"[yellow]Manual JD warning: {', '.join(quality.issues)}[/yellow]")
+        else:
+            confirmed_extraction = confirm_or_replace_jd(extraction, quality)
+            if not confirmed_extraction:
+                result.error = (
+                    "Fetched JD did not pass quality verification. "
+                    "Paste the full JD interactively or provide --jd-file/--jd-text."
+                )
+                return result
+            extraction = confirmed_extraction
+            result.extraction = extraction
+            quality = assess_jd_quality(extraction.raw_text)
 
         company_name = extract_company_name_from_jd(extraction.raw_text, fallback=company_name)
+        company_name = prompt_for_company_name_if_uncertain(company_name)
         output_dir = create_run_output_dir(company_name)
         result.output_dir = str(output_dir)
         if extraction.screenshot_path:
@@ -415,15 +785,19 @@ async def orchestrate_application(
             default=RESUME_TAILOR_USE_LLM,
         )
         
-        # OPTIMIZATION: Skip LLM tailoring for very small JDs (< 200 words)
+        # Use the fast path for small JDs only when LLM tailoring is disabled.
         jd_word_count = len(extraction.raw_text.split()) if extraction.raw_text else 0
-        if jd_word_count < 200:
+        if jd_word_count < 200 and not resume_llm_enabled:
             console.print(f"[yellow]⚠️ JD too small ({jd_word_count} words), using fast ATS tailoring[/yellow]\n")
             result.tailoring = build_rule_based_tailored_resume(extraction.raw_text)
         elif not resume_llm_enabled:
             console.print("[cyan]Fast ATS resume tailoring enabled (LLM prompt disabled)[/cyan]\n")
             result.tailoring = build_rule_based_tailored_resume(extraction.raw_text)
         else:
+            if jd_word_count < 200:
+                console.print(
+                    f"[cyan]Short JD detected ({jd_word_count} words), but LLM tailoring was enabled; using LLM.[/cyan]\n"
+                )
             try:
                 tailored = await tailor_resume(extraction.raw_text)
                 result.tailoring = tailored
@@ -449,6 +823,7 @@ async def orchestrate_application(
         
         # ═══════════════════════════════════════════════════════════════
         resume_data_dict = None
+        gap_project_added = False
         if result.tailoring and result.tailoring.keywords_missing:
             if not should_generate_gap_project(result.tailoring):
                 matched_count = len(result.tailoring.keywords_matched or [])
@@ -461,38 +836,30 @@ async def orchestrate_application(
                 console.print("[bold cyan]MODULE 2.5: Gap-Bridging Project[/bold cyan]\n")
                 console.print(
                     "[yellow]Large JD/resume gap detected. Adding an Independent Learning project "
-                    "without promoting its technologies to verified skills.[/yellow]\n"
+                    "and listing its technologies as independent-learning skills.[/yellow]\n"
                 )
                 try:
-                    gap_project = await generate_gap_project(result.tailoring.keywords_missing)
+                    resume_data_dict, technologies, covered_keywords, gap_project = await add_gap_project_to_resume_data(
+                        result.tailoring.keywords_missing,
+                        resume_data_dict,
+                    )
                     if gap_project:
-                        technologies = [
-                            str(tech).strip()
-                            for tech in gap_project.get("technologies", [])
-                            if str(tech).strip()
-                        ]
-
-                        with open(BASE_RESUME_PATH, "r", encoding="utf-8") as f:
-                            resume_data_dict = json.load(f)
-
+                        gap_project_added = True
                         project_title = str(gap_project.get("title", "Gap Bridging Project")).strip()
                         if "(Independent Learning)" not in project_title:
                             project_title = f"{project_title} (Independent Learning)"
-                        resume_project = {
-                            "title": project_title,
-                            "date": "Independent Learning",
-                            "description": str(gap_project.get("description", "")),
-                            "technologies": technologies,
-                            "bullets": [str(gap_project.get("description", ""))],
-                        }
-                        resume_data_dict.setdefault("projects", [])
-                        resume_data_dict["projects"].insert(0, resume_project)
                         base_resume_data = resume_data_dict
 
                         console.print(f"[green]Gap project added:[/green] {project_title}")
                         console.print(
-                            "[dim]Unsupported JD keywords remain visible for honest scoring.[/dim]"
+                            "[dim]Unsupported JD keywords remain visible unless the gap project explicitly covers them.[/dim]"
                         )
+                        if technologies:
+                            result.tailoring = add_learning_skills_to_tailoring(
+                                result.tailoring,
+                                technologies,
+                                covered_keywords,
+                            )
                         if gap_project.get("project_path"):
                             console.print(f"[dim]Code: {gap_project['project_path']}[/dim]\n")
                 except Exception as e:
@@ -591,8 +958,8 @@ async def orchestrate_application(
                 
                 while (
                     result.ats_score < ATS_TARGET_SCORE
-                    and retry_count < max_retries
                     and ats_report.keywords_missing
+                    and retry_count < max_retries
                 ):
                     retry_count += 1
                     console.print(f"[cyan]→ ATS Improvement Pass #{retry_count}/{max_retries}[/cyan]")
@@ -671,6 +1038,105 @@ async def orchestrate_application(
                         console.print("[yellow]  ⚠️ No more keywords to add[/yellow]")
                         break
                 
+                if (
+                    result.ats_score < ATS_TARGET_SCORE
+                    and ats_report.keywords_missing
+                    and not gap_project_added
+                ):
+                    console.print("[bold cyan]MODULE 2.5: Post-Retry Gap Project Fallback[/bold cyan]\n")
+                    console.print(
+                        "[yellow]ATS is still below the aimed value after retrying. "
+                        "Adding an Independent Learning project and its project technologies to the skills line.[/yellow]"
+                    )
+                    try:
+                        previous_score = result.ats_score
+                        previous_tailoring = result.tailoring
+                        previous_resume_path = result.resume_path
+                        previous_markdown_resume_path = result.markdown_resume_path
+                        previous_resume_data_dict = (
+                            json.loads(json.dumps(resume_data_dict))
+                            if resume_data_dict is not None
+                            else None
+                        )
+                        previous_ats_report = ats_report
+
+                        resume_data_dict, technologies, covered_keywords, gap_project = await add_gap_project_to_resume_data(
+                            ats_report.keywords_missing,
+                            resume_data_dict,
+                        )
+                        if gap_project:
+                            gap_project_added = True
+                            project_title = str(gap_project.get("title", "Gap Bridging Project")).strip()
+                            if "(Independent Learning)" not in project_title:
+                                project_title = f"{project_title} (Independent Learning)"
+
+                            if technologies:
+                                result.tailoring = add_learning_skills_to_tailoring(
+                                    result.tailoring,
+                                    technologies,
+                                    covered_keywords,
+                                )
+
+                            resume_path = await generate_resume_pdf(
+                                result.tailoring,
+                                company_name=company_name,
+                                job_description=extraction.raw_text,
+                                output_dir=output_dir,
+                                base_resume_data=resume_data_dict,
+                            )
+                            result.resume_path = str(resume_path)
+                            markdown_resume_path = Path(resume_path).with_suffix(".md")
+                            if markdown_resume_path.exists():
+                                result.markdown_resume_path = str(markdown_resume_path)
+                            ats_text_path = Path(resume_path).with_suffix(".txt")
+                            resume_text = ats_text_path.read_text(encoding="utf-8")
+                            score, ats_report = scorer.score_resume(
+                                resume_text,
+                                extraction.raw_text,
+                                str(ats_text_path),
+                            )
+                            result.ats_score = round(score, 2)
+                            console.print(
+                                f"[bold cyan]  â†’ Gap project score: {previous_score}/100 -> {result.ats_score}/100[/bold cyan]"
+                            )
+
+                            if result.ats_score < previous_score:
+                                console.print(
+                                    "[yellow]  Gap project render scored lower; restoring previous best resume[/yellow]"
+                                )
+                                result.tailoring = previous_tailoring
+                                resume_data_dict = previous_resume_data_dict
+                                ats_report = previous_ats_report
+                                restored_resume_path = await generate_resume_pdf(
+                                    result.tailoring,
+                                    company_name=company_name,
+                                    job_description=extraction.raw_text,
+                                    output_dir=output_dir,
+                                    base_resume_data=resume_data_dict,
+                                )
+                                result.resume_path = str(restored_resume_path or previous_resume_path)
+                                restored_markdown_path = Path(result.resume_path).with_suffix(".md")
+                                result.markdown_resume_path = (
+                                    str(restored_markdown_path)
+                                    if restored_markdown_path.exists()
+                                    else previous_markdown_resume_path
+                                )
+                                result.ats_score = previous_score
+                            else:
+                                console.print(f"[green]Gap project added:[/green] {project_title}")
+                                if technologies:
+                                    console.print(
+                                        f"[cyan]Learning skills added: {', '.join(technologies[:8])}[/cyan]"
+                                    )
+                                if gap_project.get("project_path"):
+                                    console.print(f"[dim]Code: {gap_project['project_path']}[/dim]")
+                        else:
+                            console.print("[yellow]  Gap project generator returned no project[/yellow]")
+                    except Exception as e:
+                        console.print(
+                            f"[yellow]Post-retry gap project skipped: {escape(str(e))}[/yellow]"
+                        )
+
                 if result.ats_score >= ATS_TARGET_SCORE:
                     console.print(f"[green]✓ ATS target reached: {result.ats_score}/100[/green]")
                 elif result.ats_score >= ATS_MIN_SCORE:

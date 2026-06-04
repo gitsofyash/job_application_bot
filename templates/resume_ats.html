@@ -241,7 +241,7 @@
             <div class="entry">
                 <div class="entry-header">
                     <span>{{ job.title }} | {{ job.company }}</span>
-                    <span class="entry-meta">{{ job.duration }}</span>
+                    <span class="entry-meta">| {{ job.duration }}</span>
                 </div>
                 {% if job.location %}<div class="entry-subtitle">{{ job.location }}</div>{% endif %}
                 {% if job.bullets %}
@@ -263,7 +263,7 @@
             <div class="entry">
                 <div class="entry-header">
                     <span>{{ project.title }}</span>
-                    <span class="entry-meta">{{ project.date }}</span>
+                    <span class="entry-meta">| {{ project.date }}</span>
                 </div>
                 {% if project.description %}<div>{{ project.description }}</div>{% endif %}
                 {% if project.technologies %}<div class="entry-subtitle">{{ project.technologies|join(', ') }}</div>{% endif %}
@@ -286,7 +286,7 @@
             <div class="entry">
                 <div class="entry-header">
                     <span>{{ edu.degree }} | {{ edu.institution }}</span>
-                    <span class="entry-meta">{{ edu.duration }}</span>
+                    <span class="entry-meta">| {{ edu.duration }}</span>
                 </div>
                 <div>{{ edu.location }}{% if edu.cgpa %} | GPA: {{ edu.cgpa }}{% endif %}</div>
             </div>

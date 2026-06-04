@@ -33,7 +33,7 @@ from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field
 from playwright.async_api import async_playwright, Page, Browser
-from rich.console import Console
+from utils.console import SafeConsole as Console
 from tenacity import (
     retry,
     stop_after_attempt,
@@ -379,6 +379,13 @@ async def extract_text_content(page: Page, platform: Platform) -> str:
                     "requirements",
                     "basic qualifications",
                     "preferred qualifications",
+                    "minimum qualifications",
+                    "what you'll do",
+                    "what you will do",
+                    "required skills",
+                    "preferred skills",
+                    "job summary",
+                    "tech stack",
                     "software",
                     "engineer",
                     "experience",
@@ -387,7 +394,19 @@ async def extract_text_content(page: Page, platform: Platform) -> str:
             )
             nav_penalty = sum(
                 1
-                for term in ["sign out", "my profile", "account security", "settings"]
+                for term in [
+                    "sign out",
+                    "my profile",
+                    "account security",
+                    "settings",
+                    "similar jobs",
+                    "privacy policy",
+                    "cookie",
+                    "terms of use",
+                    "job alert",
+                    "create alert",
+                    "share job",
+                ]
                 if term in lower
             )
             score = word_count + (job_signal_count * 150) - (nav_penalty * 250)
@@ -415,13 +434,27 @@ def clean_job_description_text(text: str) -> str:
 
     start_keywords = (
         "REQ ID:",
+        "About the job",
+        "About this job",
+        "The Role",
         "Description",
         "Job Description",
+        "Job Summary",
+        "Position Summary",
+        "What you'll do",
+        "What you will do",
         "Responsibilities",
+        "Requirements",
+        "Minimum Qualifications",
+        "Basic Qualifications",
+        "Required Qualifications",
+        "Who you are",
         "Role Summary",
     )
     end_keywords = (
         "Similar Jobs",
+        "Related Jobs",
+        "Recommended Jobs",
         "Learn More",
         "Our Company",
         "Our Philosophy",
@@ -444,6 +477,9 @@ def clean_job_description_text(text: str) -> str:
         "apply",
         "share job",
         "apply now",
+        "save job",
+        "create job alert",
+        "sign in",
     }
     noisy_contains = (
         "uses cookies",
